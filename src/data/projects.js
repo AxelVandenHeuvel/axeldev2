@@ -1,0 +1,77 @@
+export const projects = [
+  {
+    slug: 'spark',
+    title: 'VLMs for Deep Space Spacecraft',
+    description:
+      "A collaborative senior capstone project in colaboration with NASA's Jet Propulsion Laboratroy that is focusing on developoing an open source software library to run VLMs for deep space spacecrafts.",
+    stack: ['C++', 'Ollama', 'llama.cpp', 'Docker', 'Raspberry Pi'],
+    github: 'https://github.com/ksuoo/NASA-JPL-Capstone',
+    highlight: 'Software could potentially be used on future NASA missions to deep space.',
+    detail: { overview: 'Placeholder copy goes here.', sections: [{ title: 'Notes', body: 'More placeholder details coming soon.' }] },
+  },
+  {
+    slug: 'sherlock',
+    title: 'Fact-Checker Chrome Extension',
+    description:
+      'Nicknamed "Sherlock", a chrome extension that fact checks online statements.',
+    stack: ['Python', 'JavaScript', 'Flask', 'OpenAI'],
+    github: 'https://github.com/imaddar/hack_cu_public/tree/main',
+    highlight: '',
+    detail: { overview: 'Placeholder copy goes here.', sections: [{ title: 'Notes', body: 'More placeholder details coming soon.' }] },
+  },
+  {
+    slug: 'act',
+    title: 'Autonomous Detect and Act Battlefield Platform',
+    description:
+      'Collaborated with the Army Cyber Institute to lead research and techinical discovery for a modular hotswap payload drone system.',
+    stack: ['Python', 'CAD'],
+    highlight: 'Interviewed 75+ experts in related fields.',
+    detail: { overview: 'Placeholder copy goes here.', sections: [{ title: 'Notes', body: 'More placeholder details coming soon.' }] },
+  },
+  {
+    slug: 'sportssnap',
+    title: 'SportsSnap',
+    description:
+      'Chrome Extension that finds information on a sports player based on a screenshot from a YouTube video.',
+    stack: ['Python', 'Flask', 'JavaScript', 'Elevenlabs'],
+    github: 'https://devpost.com/software/sportssnap',
+    highlight: 'Placed 5th at Hackathon',
+    detail: { overview: 'Placeholder copy goes here.', sections: [{ title: 'Notes', body: 'More placeholder details coming soon.' }] },
+  },
+  {
+    slug: 'reptracker',
+    title: "Axel's Rep Tracker",
+    description: 'An ios app made to track your lifts.',
+    stack: ['Swift'],
+    github: 'https://github.com/AxelVandenHeuvel/axels-rep-tracker',
+    highlight: 'Soon to be published to app store.',
+    detail: { overview: 'Placeholder copy goes here.', sections: [{ title: 'Notes', body: 'More placeholder details coming soon.' }] },
+  },
+  {
+    slug: 'eventedu',
+    title: 'Community Event Platform',
+    description: 'Nicknamed "eventedu", a web app that allows users to join and create communities and events, as well as add friends to see what they are attending and joining.',
+    stack: ['Node.js', 'HTML/CSS', 'PostgreSQL', 'JavaScript'],
+    github: 'https://github.com/latrael/13-03',
+    highlight: 'Followed Agile Methodoligies.',
+    detail: { overview: 'Placeholder copy goes here.', sections: [{ title: 'Notes', body: 'More placeholder details coming soon.' }] },
+  },
+  {
+    slug: 'cosmic',
+    title: 'Cosmic Harmonic Visulaizer',
+    description: 'Space-Themed Harmonic Visualizer that creates constellations with the uploaded music.',
+    stack: ['JavaScript', 'Three.js', 'HTML/CSS'],
+    github: 'https://github.com/AxelVandenHeuvel/HarmonicVisualizer',
+    highlight: '',
+    detail: { overview: 'Placeholder copy goes here.', sections: [{ title: 'Notes', body: 'More placeholder details coming soon.' }] },
+  },
+  {
+    slug: 'website',
+    title: 'Personal Website',
+    description: 'My site that you are currently on.',
+    stack: ['Tailwind', 'JavaScript'],
+    github: 'https://github.com/AxelVandenHeuvel/axeldev2',
+    highlight: '',
+    detail: { overview: 'Placeholder copy goes here.', sections: [{ title: 'Notes', body: 'More placeholder details coming soon.' }] },
+  },
+]
