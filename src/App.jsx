@@ -1,5 +1,5 @@
 import { Navbar } from './components/Navbar'
-import Particles from './components/Particles'
+import ColorBends from './components/ColorBends'
 import { ScrollProgress } from './components/ScrollProgress'
 import { Hero } from './sections/Hero'
 import { About } from './sections/About'
@@ -13,15 +13,18 @@ function App() {
   return (
     <div className="relative min-h-screen overflow-hidden text-slate-100">
       <div className="fixed inset-0 -z-20 overflow-hidden bg-night">
-        <Particles
+        <ColorBends
           className="absolute inset-0"
-          particleColors={['#ffffff']}
-          particleCount={80}
-          particleSpread={18}
-          speed={0.006}
-          particleBaseSize={16}
-          moveParticlesOnHover
-          alphaParticles={false}
+          colors={["#ff5c7a", "#8a5cff", "#00ffd1"]}
+          rotation={30}
+          speed={0.3}
+          scale={1.2}
+          frequency={1.4}
+          warpStrength={1.2}
+          mouseInfluence={0.8}
+          parallax={0.6}
+          noise={0.08}
+          transparent={false}
         />
       </div>
       <ScrollProgress />
