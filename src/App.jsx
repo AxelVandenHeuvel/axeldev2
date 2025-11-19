@@ -15,16 +15,18 @@ function App() {
       <div className="fixed inset-0 -z-20 overflow-hidden bg-night">
         <ColorBends
           className="absolute inset-0"
-          colors={["#ff5c7a", "#8a5cff", "#00ffd1"]}
-          rotation={30}
-          speed={0.3}
-          scale={1.2}
-          frequency={1.4}
-          warpStrength={1.2}
-          mouseInfluence={0.8}
-          parallax={0.6}
-          noise={0.08}
-          transparent={false}
+          colors={["#FF0066", "#00FF88", "#0066FF"]}
+          rotation={0}
+          autoRotate={0}
+          speed={0.2}
+          scale={1}
+          frequency={1}
+          warpStrength={1}
+          mouseInfluence={0}
+          parallax={0.5}
+          noise={0.1}
+          transparent={true}
+          intensity={0.5}
         />
       </div>
       <ScrollProgress />
