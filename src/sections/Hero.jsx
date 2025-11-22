@@ -8,7 +8,7 @@ export function Hero() {
           Axel VandenHeuvel
         </h1>
         <p className="mt-3 text-xl text-slate-300">
-          CS student, builder, and curious problem solver.
+          Engineering across AI, backend, and systems.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <a
