@@ -58,7 +58,6 @@ export function Contact() {
                 <Icon />
                 <p className="mt-4 text-xs uppercase tracking-[0.3em] text-slate-400">{social.label}</p>
                 <p className="mt-2 text-lg font-semibold text-white">{social.value}</p>
-                <span className="mt-6 text-sm text-slate-300 group-hover:text-white">Reach out →</span>
               </a>
             )
           })}

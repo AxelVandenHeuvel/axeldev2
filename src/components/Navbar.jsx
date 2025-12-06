@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react'
-import resumePdf from '../assets/Axel_VandenHeuvel_2025.pdf'
 
 const links = [
   { href: '#hero', label: 'Home' },
   { href: '#about', label: 'About' },
   { href: '#projects', label: 'Projects' },
   { href: '#experience', label: 'Experience' },
-  { href: '#skills', label: 'Skills' },
   { href: '#contact', label: 'Contact' },
 ]
 
@@ -54,13 +52,6 @@ export function Navbar() {
               {link.label}
             </a>
           ))}
-          <a
-            href={resumePdf}
-            download
-            className="rounded-full border border-white/30 px-4 py-2 text-sm uppercase tracking-wide text-white transition hover:border-accent hover:bg-accent/10"
-          >
-            Resume
-          </a>
         </nav>
         <button
           className="ml-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white transition hover:border-accent md:hidden"
@@ -95,13 +86,6 @@ export function Navbar() {
                 {link.label}
               </a>
             ))}
-            <a
-              href={resumePdf}
-              download
-              className="rounded-full border border-white/20 px-4 py-2 text-center text-sm uppercase tracking-wide text-white"
-            >
-              Download Resume
-            </a>
           </div>
         </div>
       )}

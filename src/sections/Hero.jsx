@@ -8,12 +8,12 @@ export function Hero() {
           Axel VandenHeuvel
         </h1>
         <p className="mt-3 text-xl text-slate-300">
-          Engineering across AI, backend, and systems.
+          
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <a
             href="#projects"
-            className="group inline-flex items-center justify-center rounded-full bg-white px-6 py-3 font-semibold text-night shadow-glow transition hover:-translate-y-0.5"
+            className="group inline-flex items-center justify-center rounded-full bg-white px-6 py-3 font-semibold text-night transition hover:-translate-y-0.5"
           >
             View Projects
             <span className="ml-2 transition group-hover:translate-x-1">→</span>
