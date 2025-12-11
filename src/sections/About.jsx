@@ -1,7 +1,7 @@
 import { SectionHeading } from '../components/SectionHeading'
 
 const aboutSummary =
-  "Hi, I'm Axel, a Computer Science senior at the University of Colorado Boulder. Recently I have been intersted in AI tools for development and I'm constantly looking to expand my knowledge and learn more about software engineering and AI. Apart from computer stuff, I enjoy lifitng weights, hiking, mechanical keyboards, and I have taken a new interest in astronomy from one of my classes at university (currently reading Cosmos by Carl Sagan)."
+  "Hi, I'm Axel, a Computer Science senior at the University of Colorado Boulder. Recently I have been intersted in AI tools for development and I'm constantly looking to expand my knowledge and learn more about software engineering and AI. I also enjoy lifitng weights, hiking, mechanical keyboards, and I have taken a new interest in astronomy from one of my classes at university (currently reading Cosmos by Carl Sagan)."
 
 const cards = [
   {
