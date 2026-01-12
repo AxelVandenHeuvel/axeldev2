@@ -10,7 +10,7 @@ import { Experience } from './sections/Experience'
 function App() {
   return (
     <div className="relative min-h-screen text-slate-300">
-      <div className="fixed inset-0 -z-20 bg-night">
+      <div className="fixed inset-0 -z-20 bg-night" style={{ transform: 'translateZ(0)', WebkitBackfaceVisibility: 'hidden' }}>
         <ColorBends
           className="absolute inset-0"
           colors={["#FF0066", "#00FF88", "#0066FF"]}
