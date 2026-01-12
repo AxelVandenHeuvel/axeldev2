@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  color: #f8fafc;
+  color: #e2e8f0;
   background-color: #050914;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,32 +15,11 @@
 
 @layer base {
   body {
-    @apply text-slate-100 font-body m-0 min-h-screen;
+    @apply text-slate-300 m-0 min-h-screen;
     background-color: transparent;
   }
 
   ::selection {
-    @apply bg-accent text-white;
-  }
-}
-
-@layer utilities {
-  .glass-panel {
-    backdrop-filter: blur(16px);
-    background: rgba(15, 23, 42, 0.55);
-    border: 1px solid rgba(148, 163, 184, 0.25);
-  }
-
-  .card-hover {
-    transition: transform 350ms ease, box-shadow 350ms ease;
-  }
-
-  .card-hover:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.45);
-  }
-
-  .radial-mask {
-    background: radial-gradient(circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%), rgba(168, 85, 247, 0.22), transparent 55%);
+    @apply bg-white/20 text-white;
   }
 }

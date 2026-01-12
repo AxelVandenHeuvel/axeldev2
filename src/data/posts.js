@@ -1,4 +1,4 @@
-export const projects = [
+export const posts = [
   {
     slug: 'spark',
     title: 'VLMs for Deep Space Spacecraft',
@@ -14,10 +14,10 @@ export const projects = [
       buttons: [
         { label: 'GitHub', href: 'https://github.com/ksuoo/NASA-JPL-Capstone', external: true },
         // Add more buttons here, e.g.:
-        // label: 'Demo', href: 'https://example.com', external: true },
+        // { label: 'Demo', href: 'https://example.com', external: true },
         // { label: 'Documentation', href: '/docs', external: false },
       ],
-      // Sections - easily add images, text, lists
+      // Sections - easily add images, text, lists, quotes, code blocks, and links
       sections: [
         {
           type: 'text',
@@ -36,6 +36,26 @@ export const projects = [
         //   type: 'text',
         //   title: 'Technologies Used',
         //   list: ['C++', 'Ollama', 'llama.cpp', 'Docker', 'Raspberry Pi'],
+        // },
+        // Add quotes like this:
+        // {
+        //   type: 'quote',
+        //   text: 'This is an inspiring quote about the project.',
+        //   author: 'Optional author name',
+        // },
+        // Add code blocks like this:
+        // {
+        //   type: 'code',
+        //   language: 'js',
+        //   code: 'const example = "Hello World";',
+        //   caption: 'Optional caption for the code block',
+        // },
+        // Add links like this:
+        // {
+        //   type: 'link',
+        //   href: 'https://example.com',
+        //   label: 'Link Text',
+        //   external: true,
         // },
       ],
     },
@@ -114,3 +134,4 @@ export const projects = [
     detail: { overview: 'Placeholder copy goes here.', sections: [{ title: 'Notes', body: 'More placeholder details coming soon.' }] },
   },
 ]
+

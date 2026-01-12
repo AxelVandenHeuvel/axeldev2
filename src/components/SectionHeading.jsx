@@ -1,12 +1,9 @@
-export function SectionHeading({ label, align = 'center' }) {
-  const alignment =
-    align === 'center' ? 'text-center mx-auto' : align === 'right' ? 'text-right ml-auto' : ''
-
+export function SectionHeading({ label }) {
   return (
-    <div className={`mb-10 ${alignment}`}>
-      <p className="font-heading text-4xl uppercase tracking-[0.3em] text-white sm:text-5xl">
+    <div className="mb-12">
+      <h2 className="text-sm font-medium text-slate-400 tracking-wide">
         {label}
-      </p>
+      </h2>
     </div>
   )
 }

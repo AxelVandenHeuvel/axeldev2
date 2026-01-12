@@ -1,10 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'
-import AllProjectsPage from './AllProjectsPage.jsx'
+import AllPostsPage from './AllPostsPage.jsx'
 
 ReactDOM.createRoot(document.getElementById('projects-app')).render(
   <React.StrictMode>
-    <AllProjectsPage />
+    <AllPostsPage />
   </React.StrictMode>,
 )
+

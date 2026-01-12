@@ -2,15 +2,15 @@ import { Navbar } from './components/Navbar'
 import ColorBends from './components/ColorBends'
 import { Hero } from './sections/Hero'
 import { About } from './sections/About'
-import { Projects } from './sections/Projects'
+import { Posts } from './sections/Posts'
 import { Contact } from './sections/Contact'
 import { Footer } from './sections/Footer'
 import { Experience } from './sections/Experience'
 
 function App() {
   return (
-    <div className="relative min-h-screen overflow-hidden text-slate-100">
-      <div className="fixed inset-0 -z-20 overflow-hidden bg-night">
+    <div className="relative min-h-screen text-slate-300">
+      <div className="fixed inset-0 -z-20 bg-night">
         <ColorBends
           className="absolute inset-0"
           colors={["#FF0066", "#00FF88", "#0066FF"]}
@@ -31,13 +31,11 @@ function App() {
       <main className="relative z-10">
         <Hero />
         <About />
-        <Projects />
+        <Posts />
         <Experience />
         <Contact />
-      </main>
-      <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
         <Footer />
-      </div>
+      </main>
     </div>
   )
 }

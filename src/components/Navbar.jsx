@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 
 const links = [
-  { href: '#hero', label: 'Home' },
   { href: '#about', label: 'About' },
-  { href: '#projects', label: 'Projects' },
+  { href: '#posts', label: 'Work' },
   { href: '#experience', label: 'Experience' },
   { href: '#contact', label: 'Contact' },
 ]
@@ -34,55 +33,50 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-30 transition-all duration-300 ${
-        isScrolled ? 'backdrop-blur-xl bg-night/80 shadow-lg shadow-slate-900/50' : 'bg-transparent'
+      className={`fixed inset-x-0 top-0 z-30 transition-colors duration-300 ${
+        isScrolled ? 'bg-night/90 backdrop-blur-sm' : 'bg-transparent'
       }`}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 text-sm font-medium sm:px-6">
-        <a href="#hero" className="font-heading text-lg tracking-tight text-white">
-          Axel <span className="text-accent">VandenHeuvel</span>
+      <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
+        <a href="#hero" className="text-white font-medium">
+          Axel VandenHeuvel
         </a>
         <nav className="hidden items-center gap-8 md:flex">
           {links.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="text-slate-200 transition hover:text-white"
+              className="text-sm text-slate-400 transition-colors hover:text-white"
             >
               {link.label}
             </a>
           ))}
         </nav>
         <button
-          className="ml-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-white transition hover:border-accent md:hidden"
+          className="flex h-8 w-8 items-center justify-center text-slate-400 md:hidden"
           onClick={() => setIsOpen((prev) => !prev)}
           aria-label="Toggle navigation"
         >
-          <div className="relative h-5 w-5">
-            <span
-              className={`absolute left-1/2 top-0 h-0.5 w-5 -translate-x-1/2 bg-current transition ${
-                isOpen ? 'translate-y-2.5 rotate-45' : ''
-              }`}
-            />
-            <span
-              className={`absolute left-1/2 top-1/2 h-0.5 w-5 -translate-x-1/2 -translate-y-1/2 bg-current transition ${
-                isOpen ? 'opacity-0' : 'opacity-100'
-              }`}
-            />
-            <span
-              className={`absolute left-1/2 bottom-0 h-0.5 w-5 -translate-x-1/2 bg-current transition ${
-                isOpen ? '-translate-y-2.5 -rotate-45' : ''
-              }`}
-            />
-          </div>
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            {isOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
         </button>
       </div>
 
       {isOpen && (
-        <div className="glass-panel mx-4 mb-4 rounded-3xl p-6 md:hidden">
-          <div className="flex flex-col gap-4 text-base">
+        <div className="border-t border-white/5 bg-night/95 px-6 py-4 md:hidden">
+          <div className="flex flex-col gap-4">
             {links.map((link) => (
-              <a key={link.href} href={link.href} className="text-slate-100" onClick={() => setIsOpen(false)}>
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-slate-300 py-1"
+                onClick={() => setIsOpen(false)}
+              >
                 {link.label}
               </a>
             ))}

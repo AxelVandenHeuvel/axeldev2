@@ -2,31 +2,31 @@ import resumePdf from '../assets/Axel_VandenHeuvel_2025.pdf'
 
 export function Hero() {
   return (
-    <section id="hero" className="relative overflow-hidden pt-32 pb-36 sm:pt-40 sm:pb-48 min-h-[90vh]">
-      <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center px-4 pt-12 text-center sm:px-6 sm:pt-20">
-        <h1 className="font-heading text-4xl leading-tight text-white sm:text-5xl lg:text-6xl">
+    <section id="hero" className="relative min-h-[85vh] flex items-center">
+      <div className="mx-auto max-w-3xl px-6 py-32">
+        <p className="text-slate-400 mb-4">Hi, I'm</p>
+        <h1 className="text-4xl sm:text-5xl font-semibold text-white leading-tight">
           Axel VandenHeuvel
         </h1>
-        <p className="mt-3 text-xl text-slate-300">
-          
+        <p className="mt-6 text-lg text-slate-300 max-w-xl leading-relaxed">
+          Computer Science student at CU Boulder interested in building
+          software and exploring how AI changes the way we work.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+        <div className="mt-10 flex flex-wrap gap-4">
           <a
-            href="#projects"
-            className="group inline-flex items-center justify-center rounded-full bg-white px-6 py-3 font-semibold text-night transition hover:-translate-y-0.5"
+            href="#posts"
+            className="inline-flex items-center px-5 py-2.5 bg-white text-night text-sm font-medium rounded-md hover:bg-slate-100 transition-colors"
           >
-            View Projects
-            <span className="ml-2 transition group-hover:translate-x-1">→</span>
+            View my work
           </a>
           <a
             href={resumePdf}
             download
-            className="inline-flex items-center justify-center rounded-full border border-white/30 px-6 py-3 font-semibold text-white transition hover:border-accent hover:bg-accent/10"
+            className="inline-flex items-center px-5 py-2.5 border border-white/20 text-white text-sm font-medium rounded-md hover:border-white/40 transition-colors"
           >
-            Download Resume
+            Resume
           </a>
         </div>
-
       </div>
     </section>
   )
