@@ -9,8 +9,8 @@ export function Hero() {
           Axel VandenHeuvel
         </h1>
         <p className="mt-6 text-lg text-slate-300 max-w-xl leading-relaxed">
-          Computer Science student at CU Boulder interested in building
-          software and exploring how AI changes the way we work.
+          Comptuer Science student as CU Boulder interested in building software
+          and advancements in AI tools
         </p>
         <div className="mt-10 flex flex-wrap gap-4">
           <a
