@@ -1,4 +1,5 @@
 import { useEffect, useRef, useMemo } from 'react'
+
 import ColorBends from '../components/ColorBends'
 import { projects } from '../data/projects'
 
@@ -7,23 +8,9 @@ function parseDate(d) {
   return new Date(`20${y}`, parseInt(m) - 1, parseInt(day))
 }
 
-function seededRandom(seed) {
-  let s = seed
-  return () => {
-    s = (s * 16807 + 0) % 2147483647
-    return s / 2147483647
-  }
-}
 
-function generateClipPath(idx) {
-  const rand = seededRandom(idx * 137)
-  const jitter = () => Math.round(rand() * 8)
-  return `polygon(${jitter()}% ${jitter()}%, ${100 - jitter()}% ${jitter()}%, ${100 - jitter()}% ${100 - jitter()}%, ${jitter()}% ${100 - jitter()}%)`
-}
-
-function FloatingPost({ post, index, style, onClick }) {
+function FloatingPost({ post, style, onClick }) {
   const ref = useRef(null)
-  const clipPath = useMemo(() => generateClipPath(index), [index])
 
   useEffect(() => {
     const el = ref.current
@@ -41,8 +28,8 @@ function FloatingPost({ post, index, style, onClick }) {
     <button
       ref={ref}
       onClick={() => onClick(post)}
-      className="px-6 py-5 bg-white/5 backdrop-blur-sm border border-white/10 font-mono text-left hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer group"
-      style={{ ...style, clipPath }}
+      className="px-6 py-5 bg-white/5 backdrop-blur-sm border border-white/10 rounded font-mono text-left hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer group"
+      style={style}
     >
       <h3 className="text-white text-sm group-hover:text-white/90">{post.title}</h3>
       <span className="text-[10px] text-slate-500 mt-1 block">{post.tag} · {post.date}</span>
@@ -101,7 +88,6 @@ export function PostsPage({ onBack, onSelectPost }) {
             <FloatingPost
               key={post.title}
               post={post}
-              index={i}
               style={{
                 width: '42%',
                 marginLeft: `${((i * 17) % 7) - 3}%`,
