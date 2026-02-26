@@ -5,7 +5,7 @@ import { PostsPage } from './pages/PostsPage'
 const panels = {
   about: {
     title: 'about',
-    content: `I'm a Computer Science senior at the University of Colorado Boulder, graduating in 2025. Recently I've been interested in AI tools for development and I'm constantly looking to expand my knowledge in software engineering.\n\nOutside of coding, I enjoy lifting weights, hiking around Colorado, building mechanical keyboards, and I've recently gotten into astronomy from one of my classes (currently reading Cosmos by Carl Sagan).\n\n---\n\nEducation\n\nUniversity of Colorado Boulder\nB.S. Computer Science, 3.61 GPA`,
+    content: `I'm a Computer Science senior at the University of Colorado Boulder, graduating in 2026. Recently I've been interested in AI tools for development and I'm constantly looking to expand my knowledge in software engineering.\n\nOutside of coding, I enjoy lifting weights, hiking, building mechanical keyboards, and I've recently gotten into astronomy from one of my classes (currently reading Cosmos by Carl Sagan).\n\n---\n\nEducation\n\nUniversity of Colorado Boulder\nB.S. Computer Science, 3.64 GPA`,
   },
   experience: {
     title: 'experience',
@@ -104,7 +104,7 @@ function App() {
 
   return (
     <div className="h-screen bg-[#f2ebe0] flex flex-col justify-between px-6 py-8 overflow-hidden relative">
-      <nav className="absolute left-8 top-1/2 -translate-y-1/2 flex flex-col gap-4 font-mono text-sm text-neutral-800 z-20">
+      <nav className="absolute left-1/2 -translate-x-1/2 top-4 flex flex-row gap-6 md:left-8 md:translate-x-0 md:top-1/2 md:-translate-y-1/2 md:flex-col md:gap-4 font-mono text-sm text-neutral-800 z-20">
         {['about', 'experience', 'contact'].map((link) => (
           <button
             key={link}
@@ -118,13 +118,13 @@ function App() {
 
       {/* Panel popup */}
       {activePanel && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center p-16">
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-4 md:p-16">
           <div
             className="absolute inset-0 bg-black/10"
             onClick={() => setActivePanel(null)}
           />
           <div className="relative bg-[#f2ebe0] shadow-lg w-full max-w-2xl max-h-[70vh] overflow-y-auto p-8 font-mono rounded-sm">
-            <div className="absolute inset-3 border border-neutral-800 rounded-sm pointer-events-none" />
+            <div className="absolute inset-2 md:inset-3 border border-neutral-800 rounded-sm pointer-events-none" />
             <button
               onClick={() => setActivePanel(null)}
               className="absolute top-1.5 right-3.5 text-neutral-400 hover:text-neutral-800 text-lg z-10"

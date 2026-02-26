@@ -37,7 +37,7 @@
 export const projects = [
   {
     title: 'VLMs for Deep Space',
-    tag: 'C++',
+    tag: 'Project',
     date: '02/25/26',
     description: 'A collaborative senior capstone project with NASA\'s Jet Propulsion Laboratory focusing on developing an open source software library to run VLMs for deep space spacecrafts.',
     tags: ['C++', 'Ollama', 'llama.cpp', 'Docker', 'Raspberry Pi'],
@@ -79,14 +79,6 @@ export const projects = [
     ],
   },
   {
-    title: 'Battlefield Platform',
-    tag: 'Python',
-    date: '12/05/24',
-    description: 'Collaborated with the Army Cyber Institute to lead research and technical discovery for a modular hotswap payload drone system.',
-    tags: ['Python', 'CAD'],
-    body: 'Interviewed 75+ experts in related fields.',
-  },
-  {
     title: 'SportsSnap',
     tag: 'Flask',
     date: '08/15/24',
@@ -98,24 +90,14 @@ export const projects = [
     ],
   },
   {
-    title: 'Event Platform',
+    title: 'Community Event Platform',
     tag: 'Node.js',
     date: '05/20/24',
     description: 'A web app that allows users to join and create communities and events, as well as add friends.',
     tags: ['Node.js', 'HTML/CSS', 'PostgreSQL', 'JavaScript'],
-    body: 'Followed agile methodologies.',
+    body: 'Followed agile methodologies as per class instructions.',
     links: [
       { label: 'GitHub', href: 'https://github.com/latrael/13-03' },
-    ],
-  },
-  {
-    title: 'Personal Website',
-    tag: 'Tailwind',
-    date: '01/01/24',
-    description: 'My site that you are currently on.',
-    tags: ['Tailwind', 'JavaScript'],
-    links: [
-      { label: 'GitHub', href: 'https://github.com/AxelVandenHeuvel/axeldev2' },
     ],
   },
 ]
