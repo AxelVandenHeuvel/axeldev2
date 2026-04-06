@@ -38,21 +38,21 @@ export const projects = [
   {
     title: 'VLMs for Deep Space',
     tag: 'Project',
-    date: '02/25/26',
+    date: '04/06/26',
     description: 'A collaborative senior capstone project with NASA\'s Jet Propulsion Laboratory focusing on developing an open source software library to run VLMs for deep space spacecrafts.',
     tags: ['C++', 'Ollama', 'llama.cpp', 'Docker', 'Raspberry Pi'],
-    body: 'In this project, my team and I are developing an open source software library to run VLMs on SBCs that could potentially be used on future deep space missions.',
+    body: 'My capstone team and I are developing an open source software library to run VLMs on SBCs that could potentially be used on future deep space missions. We are using llama.cpp as our main inference engine and benchmarking multiple local VLMs.',
     links: [
       { label: 'GitHub', href: 'https://github.com/ksuoo/NASA-JPL-Capstone' },
     ],
   },
   {
-    title: 'Rep Tracker',
+    title: 'LiftVault - Lift Tracking App',
     tag: 'Swift',
-    date: '02/25/26',
+    date: '03/07/26',
     description: 'An iOS app made to track your lifts.',
     tags: ['Swift'],
-    body: 'Currently working on an app to track my lifts (curated for me). App store soon.',
+    body: 'Lift Tracking app I made mainly for my one specific needs in the gym. It is focused on simplicity and ease of use which is important to me when I\'m in the middle of a workout. Everything is locally stored on the device. It uses the Apple Foundation Models to use AI to log sets and reps based on natural language',
     links: [
       { label: 'GitHub', href: 'https://github.com/AxelVandenHeuvel/axels-rep-tracker' },
     ],
