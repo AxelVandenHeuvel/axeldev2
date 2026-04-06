@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from 'react'
+import { useMemo } from 'react'
 
 import ColorBends from '../components/ColorBends'
 import { projects } from '../data/projects'
@@ -6,35 +6,6 @@ import { projects } from '../data/projects'
 function parseDate(d) {
   const [m, day, y] = d.split('/')
   return new Date(`20${y}`, parseInt(m) - 1, parseInt(day))
-}
-
-
-function FloatingPost({ post, style, onClick }) {
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const el = ref.current
-    const duration = 4 + Math.random() * 3
-    const xAmp = 8 + Math.random() * 12
-    const yAmp = 6 + Math.random() * 10
-    const delay = Math.random() * -10
-
-    el.style.animation = `float-x ${duration}s ease-in-out ${delay}s infinite alternate, float-y ${duration * 1.3}s ease-in-out ${delay}s infinite alternate`
-    el.style.setProperty('--float-x', `${xAmp}px`)
-    el.style.setProperty('--float-y', `${yAmp}px`)
-  }, [])
-
-  return (
-    <button
-      ref={ref}
-      onClick={() => onClick(post)}
-      className="px-6 py-5 bg-white/5 backdrop-blur-sm border border-white/10 rounded font-mono text-left hover:bg-white/10 hover:border-white/20 transition-colors cursor-pointer group"
-      style={style}
-    >
-      <h3 className="text-white text-sm group-hover:text-white/90">{post.title}</h3>
-      <span className="text-[10px] text-slate-500 mt-1 block">{post.tag} · {post.date}</span>
-    </button>
-  )
 }
 
 export function PostsPage({ onBack, onSelectPost }) {
@@ -45,17 +16,6 @@ export function PostsPage({ onBack, onSelectPost }) {
 
   return (
     <div className="relative min-h-screen overflow-auto">
-      <style>{`
-        @keyframes float-x {
-          from { translate: calc(var(--float-x) * -1) 0; }
-          to { translate: var(--float-x) 0; }
-        }
-        @keyframes float-y {
-          from { margin-top: calc(var(--float-y) * -1); }
-          to { margin-top: var(--float-y); }
-        }
-      `}</style>
-
       <div className="fixed inset-0 bg-[#050914]" style={{ transform: 'translateZ(0)' }}>
         <ColorBends
           className="absolute inset-0"
@@ -74,7 +34,7 @@ export function PostsPage({ onBack, onSelectPost }) {
         />
       </div>
 
-      <div className="relative z-10 px-6 py-8">
+      <div className="relative z-10 px-6 py-8 max-w-2xl mx-auto">
         <button
           onClick={onBack}
           className="text-sm text-slate-400 hover:text-white font-mono block transition-colors mb-4"
@@ -83,17 +43,20 @@ export function PostsPage({ onBack, onSelectPost }) {
         </button>
         <h1 className="text-white text-2xl font-mono font-medium mb-8">posts</h1>
 
-        <div className="flex flex-wrap gap-y-16 gap-x-24 max-w-5xl mx-auto justify-center">
+        <div>
           {sorted.map((post, i) => (
-            <FloatingPost
-              key={post.title}
-              post={post}
-              style={{
-                width: '42%',
-                marginLeft: `${((i * 17) % 7) - 3}%`,
-              }}
-              onClick={(p) => onSelectPost?.(p)}
-            />
+            <div key={post.title}>
+              <button
+                onClick={() => onSelectPost?.(post)}
+                className="w-full flex items-center justify-between py-4 font-mono text-white hover:text-slate-300 transition-colors cursor-pointer"
+              >
+                <span className="text-sm">{post.title}</span>
+                <span className="text-xs text-slate-500">{post.date}</span>
+              </button>
+              {i < sorted.length - 1 && (
+                <div className="border-t border-white/10" />
+              )}
+            </div>
           ))}
         </div>
       </div>
