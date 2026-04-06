@@ -54,7 +54,7 @@ export const projects = [
     tags: ['Swift'],
     body: 'Lift Tracking app I made mainly for my one specific needs in the gym. It is focused on simplicity and ease of use which is important to me when I\'m in the middle of a workout. Everything is locally stored on the device. It uses the Apple Foundation Models to use AI to log sets and reps based on natural language',
     links: [
-      { label: 'GitHub', href: 'https://github.com/AxelVandenHeuvel/axels-rep-tracker' },
+      { label: 'GitHub', href: 'https://github.com/AxelVandenHeuvel/LiftVault' },
     ],
   },
   {
