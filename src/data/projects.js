@@ -36,6 +36,18 @@
 
 export const projects = [
   {
+    title: 'SpeakEasy',
+    tag: 'Rust',
+    date: '04/19/26',
+    description: 'Local, real-time speech-to-text for macOS. Hold a key, speak, release — your words appear wherever your cursor is, optionally refined by a local LLM. Everything runs on-device, no cloud.',
+    tags: ['Rust', 'Tauri', 'whisper.cpp', 'llama.cpp', 'HTML/CSS/JS'],
+    body: 'Built a push-to-talk dictation app for macOS that transcribes speech locally with whisper.cpp and can optionally refine the text with a bundled Qwen 2.5 LLM running through llama.cpp. Supports multiple refinement modes (raw, clean, rewrite), voice shortcuts, a personal dictionary, dictation commands, and multi-key push-to-talk combos. Signed with Apple Developer ID and notarized so it opens without Gatekeeper warnings. No audio or text ever leaves the device.',
+    links: [
+      { label: 'GitHub', href: 'https://github.com/AxelVandenHeuvel/SpeakEasy' },
+      { label: 'Download', href: 'https://getspeakeasy.xyz' },
+    ],
+  },
+  {
     title: 'VLMs for Deep Space',
     tag: 'Project',
     date: '04/06/26',
@@ -44,6 +56,17 @@ export const projects = [
     body: 'My capstone team and I are developing an open source software library to run VLMs on SBCs that could potentially be used on future deep space missions. We are using llama.cpp as our main inference engine and benchmarking multiple local VLMs.',
     links: [
       { label: 'GitHub', href: 'https://github.com/ksuoo/NASA-JPL-Capstone' },
+    ],
+  },
+  {
+    title: 'BrainBank',
+    tag: 'Python',
+    date: '03/15/26',
+    description: 'A hybrid Vector/Graph RAG system that turns unstructured journaling into a navigable 3D knowledge graph. Concepts, projects, tasks, and reflections are extracted from entries and connected into an explorable network.',
+    tags: ['Python', 'FastAPI', 'LanceDB', 'Kuzu', 'React', 'Three.js', 'Gemini'],
+    body: 'Built with a team of 4 CU Boulder CS seniors. The backend uses FastAPI with LanceDB for vector search and Kuzu for the concept graph, Gemini 1.5 Flash for concept extraction and grounded answers, and sentence-transformers for embeddings. The frontend is a React + Three.js app that renders the knowledge graph as an interactive 3D visualization. Supports journal ingestion, grounded Q&A, and latent document discovery across connected concepts.',
+    links: [
+      { label: 'GitHub', href: 'https://github.com/AxelVandenHeuvel/BrainBank' },
     ],
   },
   {

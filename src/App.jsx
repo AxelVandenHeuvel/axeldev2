@@ -7,16 +7,9 @@ const panels = {
     title: 'about',
     content: `I'm a Computer Science senior at the University of Colorado Boulder, graduating in 2026. Recently I've been interested in AI tools for development and I'm constantly looking to expand my knowledge in software engineering.\n\nOutside of coding, I enjoy lifting weights, hiking, mechanical keyboards, and astronomy.\n\n---\n\nEducation\n\nUniversity of Colorado Boulder\nB.S. Computer Science, 3.64 GPA`,
   },
-  experience: {
-    title: 'experience',
-    content: `Cloud Solutions Intern                          Jun 2025 — Aug 2025
-Tenet Healthcare
-
-  • Reclaimed unused Microsoft licensing through automated audit pipelines, generating $500K+ in annual cost savings.
-
-  • Integrated DocuSign API to automate reminders and compliance notifications, reducing internal document lag time.
-
-  • Built PowerShell automation to detect misconfigurations and manage entitlement workflows across 10,000+ users.`,
+  resume: {
+    title: 'resume',
+    pdf: '/resume.pdf',
   },
   contact: {
     title: 'contact',
@@ -105,7 +98,7 @@ function App() {
   return (
     <div className="h-screen bg-[#f2ebe0] flex flex-col justify-between px-6 py-8 overflow-hidden relative">
       <nav className="absolute left-1/2 -translate-x-1/2 top-4 flex flex-row gap-6 md:left-8 md:translate-x-0 md:top-1/2 md:-translate-y-1/2 md:flex-col md:gap-4 font-mono text-sm text-neutral-800 z-20">
-        {['about', 'experience', 'contact'].map((link) => (
+        {['about', 'resume', 'contact'].map((link) => (
           <button
             key={link}
             onClick={() => setActivePanel(activePanel === link ? null : link)}
@@ -123,7 +116,7 @@ function App() {
             className="absolute inset-0 bg-black/10"
             onClick={() => setActivePanel(null)}
           />
-          <div className="relative bg-[#f2ebe0] shadow-lg w-full max-w-2xl max-h-[70vh] overflow-y-auto p-8 font-mono rounded-sm">
+          <div className={`relative bg-[#f2ebe0] shadow-lg w-full ${panels[activePanel].pdf ? 'max-w-5xl h-[90vh]' : 'max-w-2xl max-h-[70vh]'} overflow-y-auto p-8 font-mono rounded-sm`}>
             <div className="absolute inset-2 md:inset-3 border border-neutral-800 rounded-sm pointer-events-none" />
             <button
               onClick={() => setActivePanel(null)}
@@ -131,8 +124,15 @@ function App() {
             >
               x
             </button>
-            <div className="relative px-4 py-2">
+            <div className="relative px-4 py-2 h-full flex flex-col">
               <h2 className="text-neutral-800 text-lg font-medium mb-4">{panels[activePanel].title}</h2>
+              {panels[activePanel].pdf && (
+                <iframe
+                  src={`${panels[activePanel].pdf}#toolbar=0&navpanes=0`}
+                  title="resume"
+                  className="flex-1 w-full border border-neutral-300 rounded-sm bg-white"
+                />
+              )}
               {panels[activePanel].content && (
                 <p className="text-neutral-600 text-sm whitespace-pre-line">{panels[activePanel].content}</p>
               )}
