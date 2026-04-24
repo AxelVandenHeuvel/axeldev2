@@ -70,7 +70,7 @@ export const projects = [
     ],
   },
   {
-    title: 'LiftVault - Lift Tracking App',
+    title: 'LiftVault',
     tag: 'Swift',
     date: '03/07/26',
     description: 'An iOS app made to track your lifts.',
