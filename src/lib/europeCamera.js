@@ -166,26 +166,7 @@ export function buildTimeline(aspect) {
     ph.p1 = acc / total
   }
 
-  return { phases, legWidths, dashWidths: dashWidths(legWidths), weight: total }
-}
-
-/**
- * Reference width used to size each leg's dash pattern.
- *
- * Dashes are sized per-leg and then frozen -- rescaling them to the live zoom
- * every frame makes the pattern slide along legs that are already drawn. But
- * sizing each purely by its own framing spans a large range between the
- * Atlantic crossing and a 500km hop, so a wide leg looks absurdly chunky when
- * a later, tighter shot happens to include it.
- *
- * Compressing by a 0.7 exponent keeps the ordering (air routes still read as
- * bolder than rail, which is right for the period) while pulling the extremes
- * toward the median.
- */
-function dashWidths(legWidths) {
-  const sorted = [...legWidths].sort((a, b) => a - b)
-  const median = sorted[Math.floor(sorted.length / 2)] || MIN_W
-  return legWidths.map((w) => median * Math.pow(w / median, 0.7))
+  return { phases, legWidths, weight: total }
 }
 
 /**

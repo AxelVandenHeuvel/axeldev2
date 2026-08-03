@@ -85,7 +85,8 @@ export default function Europe2026Page({ onBack }) {
   const lastTierRef = useRef(null)
   const lastLodRef = useRef(null)
   const lastLegStateRef = useRef([])
-  const styledLegsRef = useRef([])
+  const lastStyleKRef = useRef(-1)
+  const lastStyledLegRef = useRef(-99)
   const settledRef = useRef(null)
 
   // Fonts: injected here rather than @import'd globally, so the rest of the
@@ -123,7 +124,7 @@ export default function Europe2026Page({ onBack }) {
       // container, so they have to be recomputed after a reshape.
       lastChapterRef.current = -1
       lastLegStateRef.current = []
-      styledLegsRef.current = []
+      lastStyleKRef.current = -1
     }, [])
   )
 
@@ -184,40 +185,53 @@ export default function Europe2026Page({ onBack }) {
         for (const g of groups) g.style.display = g.dataset.tier === tier ? '' : 'none'
       }
 
-      // --- route -----------------------------------------------------------
+      // --- route styling ------------------------------------------------------
+      // Sleepers, dashes and stroke widths are constant in SCREEN pixels, so a
+      // leg drawn at one altitude looks identical to one drawn at another.
+      //
+      // Sizing them in world units instead (which an earlier version did, to
+      // stop the dash phase sliding as the camera moved) means a leg keeps the
+      // scale it was drawn at, so an earlier wide-shot leg towers over a later
+      // close-up one.
+      //
+      // Screen-constant sizing is safe now only because of the camera's
+      // one-motion-per-phase rule: k changes ONLY during a zoom phase, and
+      // during a zoom the camera is stationary and nothing is being drawn.
+      // Through every draw and every dwell k is fixed, so the pattern is
+      // pinned exactly when it would otherwise be seen to crawl.
+      //
+      // Restyling is therefore rare -- only when the zoom actually moves, or
+      // when a new leg appears -- not every frame.
       const legState = lastLegStateRef.current
-      const styled = styledLegsRef.current
+      const kChanged = Math.abs(k - lastStyleKRef.current) > 1e-6
+      const legChanged = legIndex !== lastStyledLegRef.current
+
+      if (kChanged || legChanged) {
+        lastStyleKRef.current = k
+        lastStyledLegRef.current = legIndex
+        for (let i = 0; i <= legIndex && i < legs.length; i++) {
+          for (const el of headRefs.current.segs[i] ?? []) {
+            if (!el) continue
+            const mode = el.dataset.mode
+            const s = ROUTE_STYLE[mode] ?? ROUTE_STYLE.train
+            el.setAttribute('stroke-width', (mode === 'train' ? 5.5 : s.width) * k)
+            el.setAttribute(
+              'stroke-dasharray',
+              mode === 'train' ? `${1.5 * k} ${9 * k}` : s.dash.map((n) => n * k).join(' ')
+            )
+            if (mode === 'train') el.setAttribute('stroke-linecap', 'butt')
+          }
+          for (const el of headRefs.current.rails[i] ?? []) {
+            if (el) el.setAttribute('stroke-width', 1.4 * k)
+          }
+        }
+      }
 
       for (let i = 0; i < legs.length; i++) {
         const group = legRefs.current[i]
         if (!group) continue
 
         const state = i < legIndex ? 'done' : i === legIndex ? 'active' : 'future'
-
-        // Stroke width and dash are sized ONCE per leg, from that leg's own
-        // shot width -- not from the live zoom. Rescaling them every frame
-        // makes the dash phase slide along already-drawn legs, which reads as
-        // old route lines crawling around whenever the camera moves.
-        if (state !== 'future' && !styled[i]) {
-          styled[i] = true
-          const legK = shots.dashWidths[i] / sizeRef.current.width
-          for (const el of headRefs.current.segs[i] ?? []) {
-            if (!el) continue
-            const mode = el.dataset.mode
-            const s = ROUTE_STYLE[mode] ?? ROUTE_STYLE.train
-            el.setAttribute('stroke-width', (mode === 'train' ? 5.5 : s.width) * legK)
-            el.setAttribute(
-              'stroke-dasharray',
-              mode === 'train'
-                ? `${1.5 * legK} ${9 * legK}`
-                : s.dash.map((n) => n * legK).join(' ')
-            )
-            if (mode === 'train') el.setAttribute('stroke-linecap', 'butt')
-          }
-          for (const el of headRefs.current.rails[i] ?? []) {
-            if (el) el.setAttribute('stroke-width', 1.4 * legK)
-          }
-        }
 
         if (state !== legState[i]) {
           group.style.display = state === 'future' ? 'none' : ''
