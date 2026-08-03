@@ -12,6 +12,10 @@
  *   body   - Write-up (supports \n for line breaks)
  *   images - Array of image objects: { src: "/images/example.png", caption: "optional caption" }
  *   links  - Array of link objects: { label: "Map", href: "https://..." }
+ *   view   - Renders a bespoke full-page component instead of the standard
+ *            detail view. Registered in src/App.jsx (`customViews`). Only
+ *            'europe2026' exists today; entries without this field are
+ *            unaffected.
  *
  * To add a trip, copy the template below and fill it in:
  *
@@ -29,5 +33,8 @@ export const travel = [
   {
     title: 'Europe 2026',
     date: '08/03/26',
+    // Opens the scroll cutscene instead of the generic detail view.
+    // Content lives in src/data/europe2026.js.
+    view: 'europe2026',
   },
 ]

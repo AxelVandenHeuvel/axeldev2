@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { AsciiBlackHole } from './components/AsciiBlackHole'
 import { CategoriesPage } from './pages/CategoriesPage'
 import { PostsPage } from './pages/PostsPage'
@@ -29,6 +29,12 @@ const lists = {
   travel: { title: 'travel', posts: travel },
 }
 
+// Posts can opt into a bespoke page via a `view` field. Lazy so the map data
+// and cutscene machinery stay out of the homepage bundle.
+const customViews = {
+  europe2026: lazy(() => import('./pages/Europe2026Page')),
+}
+
 function App() {
   const [activePanel, setActivePanel] = useState(null)
   const [page, setPage] = useState('home')
@@ -36,6 +42,15 @@ function App() {
   const [selectedPost, setSelectedPost] = useState(null)
 
   if (page === 'post' && selectedPost) {
+    const CustomView = customViews[selectedPost.view]
+    if (CustomView) {
+      return (
+        <Suspense fallback={<div className="min-h-screen bg-[#e8dcc0]" />}>
+          <CustomView onBack={() => { setSelectedPost(null); setPage('list') }} />
+        </Suspense>
+      )
+    }
+
     return (
       <div className="relative min-h-screen bg-[#050914] text-white font-mono">
         <div className="max-w-2xl mx-auto px-6 py-16">
