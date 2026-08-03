@@ -10,6 +10,7 @@
  * exactly ONE truncation code path for the progressive route draw.
  */
 
+import { waterCount } from './landmass.js'
 import { greatCircle, project } from './projection.js'
 import { itinerary, places } from '../data/europe2026.js'
 
@@ -81,22 +82,57 @@ function jitter(pts, amp, seed) {
 function polyline(fromSlug, toSlug, mode, geo, seed) {
   const a = places[fromSlug]
   const b = places[toSlug]
-  let pts
 
   if (geo === 'gc') {
     // True great circle -- the northward bow past Greenland is the single most
     // "adventure map" element on the page, and at 11,000km it's a real
     // hundreds-of-km difference from a straight Mercator line.
-    pts = greatCircle(a.lon, a.lat, b.lon, b.lat, 48).map(([lon, lat]) => project(lon, lat))
-  } else {
-    pts = bowedArc(project(a.lon, a.lat), project(b.lon, b.lat), BOW[mode] ?? BOW.train)
+    const pts = greatCircle(a.lon, a.lat, b.lon, b.lat, 48).map(([lon, lat]) =>
+      project(lon, lat)
+    )
+    return jitter(pts, JITTER_MAX, seed)
   }
 
-  const span = Math.hypot(
-    pts[pts.length - 1][0] - pts[0][0],
-    pts[pts.length - 1][1] - pts[0][1]
-  )
-  return jitter(pts, Math.min(JITTER_MAX, span * JITTER_RATIO), seed)
+  const pa = project(a.lon, a.lat)
+  const pb = project(b.lon, b.lat)
+  const span = Math.hypot(pb[0] - pa[0], pb[1] - pa[1])
+  const amp = Math.min(JITTER_MAX, span * JITTER_RATIO)
+  const bow = BOW[mode] ?? BOW.train
+
+  const shape = (b2) => jitter(bowedArc(pa, pb, b2), amp, seed)
+
+  // Aircraft may cross water; ground transport may not. A bow is a
+  // perpendicular offset and perpendicular has two directions -- picking
+  // blindly puts the Florence->Rome train out in the Tyrrhenian. Try both
+  // signs, then progressively flatter, and take the first that stays ashore.
+  if (mode === 'plane') return shape(bow)
+
+  // Ordered by preference: the natural bow first, then its mirror, then
+  // progressively stronger deviations. Rome->Naples crosses the Gulf of Gaeta
+  // even dead straight, so it needs roughly 3x the default bow inland before
+  // it clears the water -- hence the wide range.
+  const candidates = [
+    bow,
+    -bow,
+    bow * 0.5,
+    -bow * 0.5,
+    0,
+    bow * 1.75,
+    -bow * 1.75,
+    bow * 3,
+    -bow * 3,
+    bow * 4.5,
+    -bow * 4.5,
+  ]
+
+  let best = null
+  for (const candidate of candidates) {
+    const pts = shape(candidate)
+    const water = waterCount(pts)
+    if (best === null || water < best.water) best = { pts, water }
+    if (water === 0) break
+  }
+  return best.pts
 }
 
 /** Cumulative arc length, so truncation can be done by distance rather than index. */

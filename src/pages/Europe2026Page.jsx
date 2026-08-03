@@ -41,6 +41,32 @@ const TRACK_VH_MOBILE = 950
 const LOD_SWAP = 6000
 const RHUMB_FADE = [4000, 11000]
 
+/**
+ * How far the camera pans toward the vehicle during a leg, and how far ahead
+ * of it to aim. Follow is capped well below 1 so the destination stays in
+ * frame -- a full follow-cam reads as motion sickness, not cinema.
+ */
+const FOLLOW = 0.55
+const LOOK_AHEAD = 0.1
+
+/** Smoothstep, so the follow eases in and out rather than snapping on. */
+function smoothstep(t) {
+  const c = t < 0 ? 0 : t > 1 ? 1 : t
+  return c * c * (3 - 2 * c)
+}
+
+/**
+ * Follow strength across a leg: zero at both ends, full through the middle.
+ *
+ * Zero at the ends is what keeps the draw phase continuous with the depart
+ * and dwell either side of it -- the camera lands back on the shot's own
+ * framing exactly as the vehicle arrives.
+ */
+function edgeRamp(t) {
+  const EDGE = 0.24
+  return smoothstep(t / EDGE) * smoothstep((1 - t) / EDGE)
+}
+
 function graticuleTier(w) {
   if (w > 12000) return '20'
   if (w > 4000) return '10'
@@ -134,8 +160,37 @@ export default function Europe2026Page({ onBack }) {
       if (!svg || !shots) return
 
       const aspect = aspectRef.current
-      const { cx, cy, w, legIndex, legT, phase, stopIndex } = sampleTimeline(shots, p)
+      const shot = sampleTimeline(shots, p)
+      const { w, legIndex, legT, phase, stopIndex } = shot
       const h = w / aspect
+
+      // The active leg is truncated once and reused for the camera, the drawn
+      // line and the marker, so all three are guaranteed to agree.
+      const active = truncateLeg(legs[Math.max(0, legIndex)], legIndex < 0 ? 0 : legT)
+      const head = active.head
+
+      // --- camera ------------------------------------------------------------
+      // During a draw the shot itself is static (that's what stops the zoom
+      // running ahead of the vehicle). On top of that, pan part-way toward a
+      // point just AHEAD of the vehicle, so the frame leads where it's going.
+      //
+      // The follow strength ramps to zero at both ends of the leg, which means
+      // the camera starts and finishes exactly on the shot's own framing --
+      // no discontinuity where the draw phase meets its neighbours.
+      let cx = shot.cx
+      let cy = shot.cy
+
+      if (phase === 'draw' && head) {
+        const ramp = FOLLOW * edgeRamp(legT)
+        if (ramp > 0) {
+          const rad = (head.angle * Math.PI) / 180
+          const lead = w * LOOK_AHEAD
+          const tx = head.x + Math.cos(rad) * lead
+          const ty = head.y + Math.sin(rad) * lead
+          cx += (tx - cx) * ramp
+          cy += (ty - cy) * ramp
+        }
+      }
 
       const vx = cx - w / 2
       const vy = cy - h / 2
@@ -178,10 +233,6 @@ export default function Europe2026Page({ onBack }) {
       }
 
       // --- route -----------------------------------------------------------
-      // The active leg is truncated once and reused for both the line and the
-      // marker, so the drawn head and the vehicle can never disagree.
-      const active = truncateLeg(legs[Math.max(0, legIndex)], legIndex < 0 ? 0 : legT)
-
       const legState = lastLegStateRef.current
       const styled = styledLegsRef.current
 
@@ -281,7 +332,6 @@ export default function Europe2026Page({ onBack }) {
       // endpoints, holding the camera through the draw keeps it on screen for
       // the whole leg.
       const marker = markerRef.current
-      const head = active.head
       if (marker && head) {
         const sx = toScreenX(head.x)
         const sy = toScreenY(head.y)
