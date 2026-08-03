@@ -21,8 +21,17 @@ import { PAPER } from './paper.js'
  * because the box is sized and offset to make it so.
  */
 
-/** Hit target, comfortably over the 44px touch minimum. Also the rotation box. */
-const PIN_BOX = 44
+/**
+ * Pin hit target.
+ *
+ * The button is a pill covering the dot AND its name, not a small box around
+ * the dot alone -- the name is the thing that actually looks clickable, so it
+ * ought to be. PIN_H is the pill's height and PIN_LEAD the distance from its
+ * left edge to the centre of the dot; together they place the dot exactly on
+ * the city while the rest of the target extends across the label.
+ */
+const PIN_H = 46
+const PIN_LEAD = 18
 const MARKER_BOX = 34
 
 export const PinLayer = forwardRef(function PinLayer(
@@ -42,24 +51,22 @@ export const PinLayer = forwardRef(function PinLayer(
           type="button"
           onClick={() => onSelect(i)}
           aria-label={`${stop.name}, ${stop.country} — stop ${i + 1} of ${stops.length}`}
-          className="eu-pin absolute left-0 top-0 flex cursor-pointer items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
+          className="eu-pin absolute left-0 top-0 inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full pr-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
           style={{
-            width: PIN_BOX,
-            height: PIN_BOX,
-            marginLeft: -PIN_BOX / 2,
-            marginTop: -PIN_BOX / 2,
+            height: PIN_H,
+            paddingLeft: PIN_LEAD - 5,
+            // Places the centre of the dot, not the corner of the button, on
+            // the city. The transform written each frame would override any
+            // Tailwind -translate utility, so this is done with margins.
+            marginLeft: -PIN_LEAD,
+            marginTop: -PIN_H / 2,
             visibility: 'hidden',
           }}
         >
-          {/* Centred in the box, so it lands exactly on the city. */}
-          <span className="eu-pin-dot block h-2.5 w-2.5 rounded-full border-2 border-[#a8322a] bg-[#f2e8d0]" />
+          <span className="eu-pin-dot block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-[#a8322a] bg-[#f2e8d0]" />
           <span
-            className="eu-pin-label pointer-events-none absolute left-full top-1/2 -translate-y-1/2 whitespace-nowrap text-[11px] leading-none tracking-[0.12em]"
-            style={{
-              marginLeft: -PIN_BOX / 2 + 12,
-              fontFamily: '"IM Fell English SC", Cinzel, serif',
-              color: PAPER.inkDeep,
-            }}
+            className="eu-pin-label text-[11px] leading-none tracking-[0.12em]"
+            style={{ fontFamily: '"IM Fell English SC", Cinzel, serif', color: PAPER.inkDeep }}
           >
             {stop.name}
           </span>

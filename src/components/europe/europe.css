@@ -15,10 +15,21 @@
    this is the signal to the viewer that stopping makes them interactive. */
 .eu-pin {
   opacity: 0.55;
-  transition: opacity 220ms ease-out;
+  background-color: transparent;
+  transition:
+    opacity 220ms ease-out,
+    background-color 160ms ease-out;
 }
 [data-settled='true'] .eu-pin {
   opacity: 1;
+}
+
+/* The whole pill is the target, so the hover state covers all of it rather
+   than only ringing the dot -- otherwise nothing suggests the name is
+   clickable too. */
+[data-settled='true'] .eu-pin:hover,
+[data-settled='true'] .eu-pin:focus-visible {
+  background-color: rgba(196, 173, 134, 0.32);
 }
 [data-settled='true'] .eu-pin:hover .eu-pin-dot,
 [data-settled='true'] .eu-pin:focus-visible .eu-pin-dot {
@@ -32,9 +43,6 @@
 @media (hover: none) {
   .eu-pin {
     opacity: 1;
-  }
-  .eu-pin {
-    padding: 11px; /* 44px minimum hit target around the dot */
   }
 }
 
