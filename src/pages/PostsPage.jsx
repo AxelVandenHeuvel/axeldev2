@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 
-import ColorBends from '../components/ColorBends'
 import { projects } from '../data/projects'
 
 function parseDate(d) {
@@ -8,32 +7,14 @@ function parseDate(d) {
   return new Date(`20${y}`, parseInt(m) - 1, parseInt(day))
 }
 
-export function PostsPage({ onBack, onSelectPost }) {
+export function PostsPage({ onBack, onSelectPost, title = 'posts', posts = projects }) {
   const sorted = useMemo(() =>
-    [...projects].sort((a, b) => parseDate(b.date) - parseDate(a.date)),
-    []
+    [...posts].sort((a, b) => parseDate(b.date) - parseDate(a.date)),
+    [posts]
   )
 
   return (
-    <div className="relative min-h-screen overflow-auto">
-      <div className="fixed inset-0 bg-[#050914]" style={{ transform: 'translateZ(0)' }}>
-        <ColorBends
-          className="absolute inset-0"
-          colors={["#FF0066", "#00FF88", "#0066FF"]}
-          rotation={0}
-          autoRotate={0}
-          speed={0.2}
-          scale={1}
-          frequency={1}
-          warpStrength={1}
-          mouseInfluence={0}
-          parallax={0.5}
-          noise={0.1}
-          transparent={true}
-          intensity={0.3}
-        />
-      </div>
-
+    <div className="relative min-h-screen overflow-auto bg-[#050914]">
       <div className="relative z-10 px-6 py-8 max-w-2xl mx-auto">
         <button
           onClick={onBack}
@@ -41,9 +22,12 @@ export function PostsPage({ onBack, onSelectPost }) {
         >
           ← back
         </button>
-        <h1 className="text-white text-2xl font-mono font-medium mb-8">posts</h1>
+        <h1 className="text-white text-2xl font-mono font-medium mb-8">{title}</h1>
 
         <div>
+          {sorted.length === 0 && (
+            <p className="text-sm text-slate-500 font-mono">nothing here yet.</p>
+          )}
           {sorted.map((post, i) => (
             <div key={post.title}>
               <button

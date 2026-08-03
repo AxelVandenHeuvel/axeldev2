@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { AsciiBlackHole } from './components/AsciiBlackHole'
+import { CategoriesPage } from './pages/CategoriesPage'
 import { PostsPage } from './pages/PostsPage'
+import { projects } from './data/projects'
+import { travel } from './data/travel'
 
 const panels = {
   about: {
@@ -21,9 +24,15 @@ const panels = {
   },
 }
 
+const lists = {
+  cs: { title: 'posts', posts: projects },
+  travel: { title: 'travel', posts: travel },
+}
+
 function App() {
   const [activePanel, setActivePanel] = useState(null)
   const [page, setPage] = useState('home')
+  const [activeList, setActiveList] = useState('cs')
   const [selectedPost, setSelectedPost] = useState(null)
 
   if (page === 'post' && selectedPost) {
@@ -31,7 +40,7 @@ function App() {
       <div className="relative min-h-screen bg-[#050914] text-white font-mono">
         <div className="max-w-2xl mx-auto px-6 py-16">
           <button
-            onClick={() => { setSelectedPost(null); setPage('posts') }}
+            onClick={() => { setSelectedPost(null); setPage('list') }}
             className="text-sm text-slate-400 hover:text-white mb-12 block transition-colors"
           >
             ← back
@@ -39,20 +48,8 @@ function App() {
           <h1 className="text-2xl font-medium mb-2">{selectedPost.title}</h1>
           <span className="text-xs text-slate-500">{selectedPost.date}</span>
 
-          {selectedPost.tags && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {selectedPost.tags.map((t) => (
-                <span key={t} className="text-[10px] text-slate-400 border border-white/10 px-2 py-0.5 rounded-sm">{t}</span>
-              ))}
-            </div>
-          )}
-
-          {selectedPost.description && (
-            <p className="text-slate-300 text-sm mt-8">{selectedPost.description}</p>
-          )}
-
           {selectedPost.body && (
-            <p className="text-slate-400 text-sm mt-6 whitespace-pre-line">{selectedPost.body}</p>
+            <p className="text-slate-400 text-sm mt-8 whitespace-pre-line">{selectedPost.body}</p>
           )}
 
           {selectedPost.images && selectedPost.images.length > 0 && (
@@ -86,11 +83,22 @@ function App() {
     )
   }
 
-  if (page === 'posts') {
+  if (page === 'list') {
     return (
       <PostsPage
-        onBack={() => setPage('home')}
+        title={lists[activeList].title}
+        posts={lists[activeList].posts}
+        onBack={() => setPage('categories')}
         onSelectPost={(post) => { setSelectedPost(post); setPage('post') }}
+      />
+    )
+  }
+
+  if (page === 'categories') {
+    return (
+      <CategoriesPage
+        onBack={() => setPage('home')}
+        onSelect={(key) => { setActiveList(key); setPage('list') }}
       />
     )
   }
@@ -157,21 +165,17 @@ function App() {
         </div>
       )}
       <pre className="text-neutral-800 text-[10px] sm:text-xs md:text-sm leading-tight font-mono select-none mx-auto w-fit">
-{`    ___   _  __ ________
-   /   | | |/ // ____/ /
-  / /| | |   // __/ / /
- / ___ |/   |/ /___/ /___
-/_/  |_/_/|_/_____/_____/`}
+{`____ _  _ ____ _
+|__|  \\/  |___ |
+|  | _/\\_ |___ |___`}
       </pre>
 
-      <AsciiBlackHole onEnter={() => setPage('posts')} />
+      <AsciiBlackHole onEnter={() => setPage('categories')} />
 
       <pre className="text-neutral-800 text-[10px] sm:text-xs md:text-sm leading-tight font-mono select-none mx-auto w-fit">
-{` _    _____    _   ______  _______   ____  __________  ___    __________
-| |  / /   |  / | / / __ \\/ ____/ | / / / / / ____/ / / / |  / / ____/ /
-| | / / /| | /  |/ / / / / __/ /  |/ / /_/ / __/ / / / /| | / / __/ / /
-| |/ / ___ |/ /|  / /_/ / /___/ /|  / __  / /___/ /_/ / | |/ / /___/ /___
-|___/_/  |_/_/ |_/_____/_____/_/ |_/_/ /_/_____/\\____/  |___/_____/_____/`}
+{`_  _ ____ _  _ ___  ____ _  _ _  _ ____ _  _ _  _ ____ _
+|  | |__| |\\ | |  \\ |___ |\\ | |__| |___ |  | |  | |___ |
+ \\/  |  | | \\| |__/ |___ | \\| |  | |___ |__|  \\/  |___ |___`}
       </pre>
     </div>
   )
