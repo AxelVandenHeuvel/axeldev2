@@ -2,56 +2,75 @@
  * The camera timeline: maps scroll progress 0..1 to a viewBox and a route
  * draw position.
  *
- * Built as explicit PHASES rather than keyframes the camera continuously
- * interpolates between. That distinction matters: with plain keyframes the
- * camera is already travelling toward the next framing while the vehicle is
- * only halfway through the current leg, so the zoom visibly "pre-fires" the
- * arrival. Here each leg gets a draw phase during which the camera does not
- * move at all, bracketed by explicit transitions.
+ * THE ONE RULE: every phase is exactly one kind of motion.
  *
- *   dwell(i)  -- camera parked on stop i, route static. The pause.
- *   depart(i) -- camera moves from the stop framing out to leg i's framing.
- *   draw(i)   -- camera HELD still; the route line draws 0 -> 1.
- *   approach  -- camera settles into a hero stop's tighter framing.
+ *   dwell -- nothing moves
+ *   zoom  -- scale changes, centre is pinned
+ *   draw  -- centre pans, scale is pinned
  *
- * Because a leg's framing fits both its endpoints with padding, holding the
- * camera during the draw also guarantees the vehicle marker stays on screen
- * for the whole leg.
+ * That constraint is what makes the movement read as orderly. Compound
+ * motion -- panning while zooming while the line grows -- is what makes a
+ * camera feel unsettled, and it's what the earlier versions of this file did.
+ *
+ * It falls out of one decision: THE CAMERA CENTRE IS ALWAYS THE VEHICLE.
+ * Not a leg's midpoint, not a blend that ramps in and out -- just the vehicle.
+ * Because a dwell happens while the vehicle is parked at a stop, and a leg
+ * begins where the previous one ended, the centre is automatically continuous
+ * everywhere, with no anchor arithmetic and no seams to reconcile.
+ *
+ * Scale is quantised to a ladder, so consecutive legs of similar size share a
+ * level and the zoom phase between them disappears entirely rather than
+ * becoming a pointless twitch.
  *
  * Zoom interpolates in LOG space. Perceived zoom rate is proportional to
  * dw/w, so constant perceived speed requires w to vary exponentially. Linear
- * interpolation across the Atlantic dive (11000 -> 2400) rips inward and then
- * crawls.
+ * interpolation across the Atlantic dive rips inward and then crawls.
  */
 
-import { MIN_W, legs, stops } from './europeRoute.js'
+import { MIN_W, legs, stops, truncateLeg } from './europeRoute.js'
 
-/** Framing padding as a fraction of leg span, plus a floor for close stops. */
-const FIT_SCALE = 1.55
-const FIT_PAD = 140
+/**
+ * Framing. The camera rides the vehicle, so a leg's far end sits a full span
+ * away from centre at departure -- the frame has to be about twice the span
+ * for the destination to be in view, where a centred-on-the-leg camera would
+ * only have needed one.
+ */
+const FIT_SCALE = 2.0
+const FIT_PAD = 200
 
-/** Leg index of the dive: the one transition from Atlantic to Europe scale. */
+/**
+ * Scale ladder. Snapping each leg up to a discrete level means neighbouring
+ * legs of similar size resolve to the SAME level, which lets the zoom phase
+ * between them be dropped altogether.
+ */
+const ZOOM_RATIO = 1.35
+
+/** How far a hero stop punches in from the leg that arrived there. */
+const HERO_ZOOM = 0.55
+
 const DIVE_LEG = 2
 
-/** Scroll weight per phase kind. Dwell is the deliberate pause at each stop. */
 const DWELL = 0.5
-const TRANSITION = 0.42
+const ZOOM_TIME = 0.55
 
 function easeInOutCubic(t) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 }
 
-/** Gentler than cubic -- used for the vehicle so long legs don't crawl. */
+/** Gentler than cubic, so long legs don't crawl at the extremes. */
 function easeInOutSine(t) {
   return -(Math.cos(Math.PI * t) - 1) / 2
 }
 
-/**
- * Frames a leg's two endpoints.
- *
- * Width is the binding dimension, so a tall portrait viewport still fits the
- * vertical span -- that's what `spanY * aspect` is doing.
- */
+function snapZoom(w) {
+  if (w <= MIN_W) return MIN_W
+  // Nearest, not up. Rounding up costs a whole ladder step of extra altitude
+  // on the Atlantic crossing; rounding down by at most a few percent just
+  // means the destination slides into frame a moment after departure.
+  const steps = Math.round(Math.log(w / MIN_W) / Math.log(ZOOM_RATIO))
+  return MIN_W * Math.pow(ZOOM_RATIO, Math.max(0, steps))
+}
+
 function fitLeg(leg, aspect) {
   let minX = Infinity
   let minY = Infinity
@@ -67,11 +86,7 @@ function fitLeg(leg, aspect) {
   }
   const spanX = (maxX - minX) * FIT_SCALE + FIT_PAD
   const spanY = (maxY - minY) * FIT_SCALE + FIT_PAD
-  return {
-    cx: (minX + maxX) / 2,
-    cy: (minY + maxY) / 2,
-    w: Math.max(spanX, spanY * aspect, MIN_W),
-  }
+  return Math.max(spanX, spanY * aspect, MIN_W)
 }
 
 /**
@@ -81,93 +96,65 @@ function fitLeg(leg, aspect) {
  * viewBox doesn't survive a change of viewport shape.
  */
 export function buildTimeline(aspect) {
-  const legViews = legs.map((leg) => fitLeg(leg, aspect))
+  const legWidths = legs.map((leg) => snapZoom(fitLeg(leg, aspect)))
   const phases = []
 
-  /**
-   * Where the camera rests at stop i.
-   *
-   * Hero stops punch in. Everything else simply holds wherever the arriving
-   * leg left the camera -- zooming in and back out at all 21 stops would be
-   * seasick, and the pause alone is enough to register as an arrival.
-   */
-  const stopView = (i) => {
-    const stop = stops[i]
-    if (stop.hero) {
-      const neighbours = [legViews[i - 1]?.w, legViews[i]?.w].filter(Boolean)
-      const context = neighbours.length ? Math.min(...neighbours) : MIN_W
-      return { cx: stop.x, cy: stop.y, w: Math.max(MIN_W, context * 0.55) }
+  let currentW = null
+
+  /** Emits a pure-zoom phase, or nothing at all if the scale already matches. */
+  const zoomTo = (target, stopIndex, legIndex, legT) => {
+    if (currentW !== null && Math.abs(target - currentW) < 1) return
+    if (currentW !== null) {
+      phases.push({
+        kind: 'zoom',
+        stopIndex,
+        legIndex,
+        legT,
+        w0: currentW,
+        w1: target,
+        weight: ZOOM_TIME,
+      })
     }
-    const v = legViews[i - 1] ?? legViews[i]
-    return { cx: v.cx, cy: v.cy, w: v.w }
+    currentW = target
   }
 
   for (let i = 0; i < stops.length; i++) {
-    const sv = stopView(i)
+    const arrivingLeg = i - 1
+    const departingLeg = i < legs.length ? i : null
 
-    // Settle into a hero city before pausing on it.
-    if (i > 0 && stops[i].hero) {
-      phases.push({
-        kind: 'approach',
-        stopIndex: i,
-        from: legViews[i - 1],
-        to: sv,
-        legIndex: i - 1,
-        t0: 1,
-        t1: 1,
-        weight: TRANSITION,
-        ease: 'cubic',
-      })
-    }
+    // A hero stop punches in; everything else holds whatever scale it arrived
+    // at, so the journey doesn't oscillate in and out at all 21 stops.
+    const base = legWidths[arrivingLeg] ?? legWidths[0]
+    const stopW = stops[i].hero ? Math.max(MIN_W, snapZoom(base * HERO_ZOOM)) : (currentW ?? base)
 
-    // The pause. Camera and route both completely static.
+    zoomTo(stopW, i, arrivingLeg, 1)
+
     phases.push({
       kind: 'dwell',
       stopIndex: i,
-      from: sv,
-      to: sv,
-      legIndex: i - 1,
-      t0: 1,
-      t1: 1,
+      legIndex: arrivingLeg,
+      legT: 1,
+      w0: currentW,
+      w1: currentW,
       weight: i === 0 || i === stops.length - 1 ? DWELL * 1.6 : DWELL,
-      ease: 'linear',
     })
 
-    const leg = legs[i]
-    if (!leg) continue
+    if (departingLeg === null) continue
 
-    const lv = legViews[i]
+    zoomTo(legWidths[departingLeg], i, departingLeg, 0)
 
-    // Pull out to frame the leg BEFORE any of it is drawn.
-    phases.push({
-      kind: 'depart',
-      stopIndex: i,
-      from: sv,
-      to: lv,
-      legIndex: i,
-      t0: 0,
-      t1: 0,
-      weight: TRANSITION,
-      ease: 'cubic',
-    })
-
-    // The draw. Camera is held -- from === to -- so the zoom cannot run ahead
-    // of the vehicle. Longer legs earn more scroll, but sub-linearly: the
-    // Atlantic crossing is 20x Munich->Salzburg and must not take 20x the
-    // scrolling.
-    let weight = Math.min(2, Math.max(0.8, Math.sqrt(leg.length / 3000)))
-    if (i === DIVE_LEG) weight = 2.2
+    // Longer legs earn more scroll, but sub-linearly: the Atlantic crossing is
+    // 20x Munich->Salzburg and must not take 20x the scrolling.
+    let weight = Math.min(2, Math.max(0.85, Math.sqrt(legs[departingLeg].length / 3000)))
+    if (departingLeg === DIVE_LEG) weight = 2.2
 
     phases.push({
       kind: 'draw',
       stopIndex: i,
-      from: lv,
-      to: lv,
-      legIndex: i,
-      t0: 0,
-      t1: 1,
+      legIndex: departingLeg,
+      w0: currentW,
+      w1: currentW,
       weight,
-      ease: 'sine',
     })
   }
 
@@ -179,33 +166,34 @@ export function buildTimeline(aspect) {
     ph.p1 = acc / total
   }
 
-  return { phases, legViews, dashWidths: dashWidths(legViews), weight: total }
+  return { phases, legWidths, dashWidths: dashWidths(legWidths), weight: total }
 }
 
 /**
  * Reference width used to size each leg's dash pattern.
  *
- * Dashes must be sized per-leg and then frozen -- rescaling them to the live
- * zoom every frame makes the pattern slide along legs that are already drawn.
- * But sizing each purely by its own framing spans an 18x range between the
+ * Dashes are sized per-leg and then frozen -- rescaling them to the live zoom
+ * every frame makes the pattern slide along legs that are already drawn. But
+ * sizing each purely by its own framing spans a large range between the
  * Atlantic crossing and a 500km hop, so a wide leg looks absurdly chunky when
  * a later, tighter shot happens to include it.
  *
  * Compressing by a 0.7 exponent keeps the ordering (air routes still read as
- * bolder than rail, which is correct for the period) while pulling the
- * extremes toward the median.
+ * bolder than rail, which is right for the period) while pulling the extremes
+ * toward the median.
  */
-function dashWidths(legViews) {
-  const sorted = legViews.map((v) => v.w).sort((a, b) => a - b)
+function dashWidths(legWidths) {
+  const sorted = [...legWidths].sort((a, b) => a - b)
   const median = sorted[Math.floor(sorted.length / 2)] || MIN_W
-  return legViews.map((v) => median * Math.pow(v.w / median, 0.7))
+  return legWidths.map((w) => median * Math.pow(w / median, 0.7))
 }
 
 /**
  * Samples the timeline.
  *
- * Returns the camera box plus which leg is drawing and how far -- one call per
- * frame drives both the viewBox and the route head.
+ * Also returns the truncated leg, because the camera centre is derived from
+ * the vehicle position -- computing it here means the camera, the drawn line
+ * and the marker all come from one truncation and cannot disagree.
  */
 export function sampleTimeline(timeline, p) {
   const { phases } = timeline
@@ -217,26 +205,36 @@ export function sampleTimeline(timeline, p) {
 
   const span = ph.p1 - ph.p0
   const local = span > 0 ? (clamped - ph.p0) / span : 0
-  const eased =
-    ph.ease === 'cubic'
-      ? easeInOutCubic(local)
-      : ph.ease === 'sine'
-        ? easeInOutSine(local)
-        : local
 
-  const w =
-    ph.from.w === ph.to.w
-      ? ph.from.w
-      : ph.from.w * Math.pow(ph.to.w / ph.from.w, eased)
+  let w
+  let legT
+
+  if (ph.kind === 'draw') {
+    // Pure pan: scale pinned, vehicle eased along the leg.
+    w = ph.w0
+    legT = easeInOutSine(local)
+  } else if (ph.kind === 'zoom') {
+    // Pure zoom: centre pinned (the vehicle is parked), log-interpolated.
+    w = ph.w0 * Math.pow(ph.w1 / ph.w0, easeInOutCubic(local))
+    legT = ph.legT
+  } else {
+    w = ph.w0
+    legT = ph.legT
+  }
+
+  const legIndex = ph.legIndex
+  const active = truncateLeg(legs[Math.max(0, legIndex)], legIndex < 0 ? 0 : legT)
+  const head = active.head
 
   return {
-    cx: ph.from.cx + (ph.to.cx - ph.from.cx) * eased,
-    cy: ph.from.cy + (ph.to.cy - ph.from.cy) * eased,
+    cx: head.x,
+    cy: head.y,
     w: Math.max(MIN_W, w),
-    legIndex: ph.legIndex,
-    legT: ph.t0 + (ph.t1 - ph.t0) * eased,
+    legIndex,
+    legT,
     phase: ph.kind,
     stopIndex: ph.stopIndex,
+    active,
   }
 }
 
