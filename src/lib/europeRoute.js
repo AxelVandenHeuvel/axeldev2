@@ -28,8 +28,15 @@ export const MIN_W = 1200
 /** How far a leg bows off the straight line, as a fraction of its length. */
 const BOW = { plane: 0.16, train: 0.05, bus: 0.08 }
 
-/** Hand-drawn wobble amplitude in world units (~5km). Baked, never animated. */
-const JITTER = 8
+/**
+ * Hand-drawn wobble, as a fraction of the segment's own length and capped.
+ *
+ * A fixed amplitude is wrong: 8 world units is a pleasant waver across the
+ * Atlantic but is ~8% of the Bovec->Bled hop, which reads as the line being
+ * broken rather than hand-inked.
+ */
+const JITTER_RATIO = 0.012
+const JITTER_MAX = 8
 
 const SAMPLES = 24
 
@@ -85,7 +92,11 @@ function polyline(fromSlug, toSlug, mode, geo, seed) {
     pts = bowedArc(project(a.lon, a.lat), project(b.lon, b.lat), BOW[mode] ?? BOW.train)
   }
 
-  return jitter(pts, JITTER, seed)
+  const span = Math.hypot(
+    pts[pts.length - 1][0] - pts[0][0],
+    pts[pts.length - 1][1] - pts[0][1]
+  )
+  return jitter(pts, Math.min(JITTER_MAX, span * JITTER_RATIO), seed)
 }
 
 /** Cumulative arc length, so truncation can be done by distance rather than index. */
@@ -178,6 +189,22 @@ export const legs = itinerary.slice(1).map((entry, i) => {
  */
 export function truncateLeg(leg, t) {
   const clamped = t < 0 ? 0 : t > 1 ? 1 : t
+
+  // At t=0 nothing is drawn, but the marker still needs somewhere to sit --
+  // parked at the origin, already facing the way it's about to go.
+  if (clamped === 0) {
+    const first = leg.segments[0]
+    return {
+      parts: leg.segments.map(() => null),
+      head: {
+        x: first.pts[0][0],
+        y: first.pts[0][1],
+        angle: angleBetween(first.pts[0], first.pts[1]),
+        mode: first.mode,
+      },
+    }
+  }
+
   let remaining = leg.length * clamped
 
   const parts = []

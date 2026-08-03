@@ -12,9 +12,18 @@ import { PAPER } from './paper.js'
  * miserable to keep legible. Out here they're real <button>s: constant screen
  * size, keyboard focusable, Tab-ordered, and styleable with Tailwind.
  *
- * The parent repositions them each frame via transform. 21 style writes per
- * frame costs nothing.
+ * CENTRING, which is fiddly and was wrong before: the parent writes
+ * `transform: translate3d(...)` on these elements every frame, which OVERRIDES
+ * any Tailwind -translate-x-1/2 class rather than composing with it. So
+ * centring is done with negative margins instead, and each element is a fixed
+ * box whose middle is the anchor point. The marker additionally rotates, and
+ * rotation pivots about the box centre -- which is only the glyph's centre
+ * because the box is sized and offset to make it so.
  */
+
+/** Hit target, comfortably over the 44px touch minimum. Also the rotation box. */
+const PIN_BOX = 44
+const MARKER_BOX = 34
 
 export const PinLayer = forwardRef(function PinLayer(
   { pinRefs, markerRef, markerGlyphRef, onSelect },
@@ -33,31 +42,52 @@ export const PinLayer = forwardRef(function PinLayer(
           type="button"
           onClick={() => onSelect(i)}
           aria-label={`${stop.name}, ${stop.country} — stop ${i + 1} of ${stops.length}`}
-          className="eu-pin absolute left-0 top-0 flex origin-center -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center gap-1.5 rounded-sm p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
-          style={{ visibility: 'hidden' }}
+          className="eu-pin absolute left-0 top-0 flex cursor-pointer items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
+          style={{
+            width: PIN_BOX,
+            height: PIN_BOX,
+            marginLeft: -PIN_BOX / 2,
+            marginTop: -PIN_BOX / 2,
+            visibility: 'hidden',
+          }}
         >
-          <span className="eu-pin-dot relative block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-[#a8322a] bg-[#f2e8d0]" />
+          {/* Centred in the box, so it lands exactly on the city. */}
+          <span className="eu-pin-dot block h-2.5 w-2.5 rounded-full border-2 border-[#a8322a] bg-[#f2e8d0]" />
           <span
-            className="eu-pin-label whitespace-nowrap text-[11px] leading-none tracking-[0.12em]"
-            style={{ fontFamily: '"IM Fell English SC", Cinzel, serif', color: PAPER.inkDeep }}
+            className="eu-pin-label pointer-events-none absolute left-full top-1/2 -translate-y-1/2 whitespace-nowrap text-[11px] leading-none tracking-[0.12em]"
+            style={{
+              marginLeft: -PIN_BOX / 2 + 12,
+              fontFamily: '"IM Fell English SC", Cinzel, serif',
+              color: PAPER.inkDeep,
+            }}
           >
             {stop.name}
           </span>
         </button>
       ))}
 
-      {/* The vehicle. Rides the head of the drawing line. */}
+      {/*
+        The vehicle. Rides the head of the drawing line.
+        Fixed box, centred by margin, so `rotate()` pivots on the glyph's own
+        centre and the nose stays on the line.
+      */}
       <div
         ref={markerRef}
-        className="absolute left-0 top-0 origin-center"
-        style={{ visibility: 'hidden' }}
+        className="eu-marker absolute left-0 top-0"
+        style={{
+          width: MARKER_BOX,
+          height: MARKER_BOX,
+          marginLeft: -MARKER_BOX / 2,
+          marginTop: -MARKER_BOX / 2,
+          visibility: 'hidden',
+        }}
       >
         <svg
           ref={markerGlyphRef}
-          width="30"
-          height="30"
+          width={MARKER_BOX}
+          height={MARKER_BOX}
           viewBox="-14 -14 28 28"
-          className="-translate-x-1/2 -translate-y-1/2 overflow-visible"
+          className="overflow-visible"
           aria-hidden="true"
         >
           <g data-role="glyph" fill={PAPER.inkDeep}>

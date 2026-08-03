@@ -118,11 +118,13 @@ export const places = {
     blurb: '',
     photos: [],
   },
-  mostnasoci: {
-    name: 'Most na Soči',
+  // Transfer point on the Bohinj railway. Roughly on the line Bovec -> Bled,
+  // so the drawn route reads as one journey rather than a detour.
+  bohinjska: {
+    name: 'Bohinjska Bistrica',
     country: 'Slovenia',
-    lon: 13.7397,
-    lat: 46.1497,
+    lon: 13.9447,
+    lat: 46.2761,
     transfer: true,
   },
   bled: {
@@ -241,7 +243,7 @@ export const itinerary = [
     via: {
       mode: 'multi',
       segments: [
-        { to: 'mostnasoci', mode: 'bus' },
+        { to: 'bohinjska', mode: 'bus' },
         { to: 'bled', mode: 'train' },
       ],
     },

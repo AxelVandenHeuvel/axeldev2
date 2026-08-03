@@ -4,7 +4,7 @@ import { ChapterHud } from '../components/europe/ChapterHud.jsx'
 import { JournalModal } from '../components/europe/JournalModal.jsx'
 import { MapStage } from '../components/europe/MapStage.jsx'
 import { PinLayer } from '../components/europe/PinLayer.jsx'
-import { setMarkerGlyph } from '../components/europe/glyphs.js'
+import { glyphFlip, setMarkerGlyph } from '../components/europe/glyphs.js'
 import { StaticRouteMap } from '../components/europe/StaticRouteMap.jsx'
 import {
   usePrefersReducedMotion,
@@ -30,9 +30,12 @@ import '../components/europe/europe.css'
  * opens.
  */
 
-/** Scroll length. Long enough to pace 29 shots, short enough not to exhaust. */
-const TRACK_VH_DESKTOP = 1150
-const TRACK_VH_MOBILE = 700
+/**
+ * Scroll length. Sized for the phase count -- every stop now gets a dwell and
+ * every leg a separate depart + draw, so there is more to pace than before.
+ */
+const TRACK_VH_DESKTOP = 1500
+const TRACK_VH_MOBILE = 950
 
 /** Above this viewBox width the fine European geometry isn't worth drawing. */
 const LOD_SWAP = 6000
@@ -82,6 +85,7 @@ export default function Europe2026Page({ onBack }) {
   const lastTierRef = useRef(null)
   const lastLodRef = useRef(null)
   const lastLegStateRef = useRef([])
+  const styledLegsRef = useRef([])
   const settledRef = useRef(null)
 
   // Fonts: injected here rather than @import'd globally, so the rest of the
@@ -115,7 +119,11 @@ export default function Europe2026Page({ onBack }) {
       // Shot framing depends on aspect, so the timeline is rebuilt on resize
       // rather than stored as viewBox strings (which don't survive reshape).
       timelineRef.current = buildTimeline(aspectRef.current)
+      // Per-leg stroke sizing and leg visibility are both derived from the
+      // container, so they have to be recomputed after a reshape.
       lastChapterRef.current = -1
+      lastLegStateRef.current = []
+      styledLegsRef.current = []
     }, [])
   )
 
@@ -126,7 +134,7 @@ export default function Europe2026Page({ onBack }) {
       if (!svg || !shots) return
 
       const aspect = aspectRef.current
-      const { cx, cy, w, legIndex, legT } = sampleTimeline(shots, p)
+      const { cx, cy, w, legIndex, legT, phase, stopIndex } = sampleTimeline(shots, p)
       const h = w / aspect
 
       const vx = cx - w / 2
@@ -170,34 +178,70 @@ export default function Europe2026Page({ onBack }) {
       }
 
       // --- route -----------------------------------------------------------
+      // The active leg is truncated once and reused for both the line and the
+      // marker, so the drawn head and the vehicle can never disagree.
+      const active = truncateLeg(legs[Math.max(0, legIndex)], legIndex < 0 ? 0 : legT)
+
       const legState = lastLegStateRef.current
+      const styled = styledLegsRef.current
+
       for (let i = 0; i < legs.length; i++) {
         const group = legRefs.current[i]
         if (!group) continue
 
         const state = i < legIndex ? 'done' : i === legIndex ? 'active' : 'future'
-        const style = ROUTE_STYLE[legs[i].mode] ?? ROUTE_STYLE.train
+
+        // Stroke width and dash are sized ONCE per leg, from that leg's own
+        // shot width -- not from the live zoom. Rescaling them every frame
+        // makes the dash phase slide along already-drawn legs, which reads as
+        // old route lines crawling around whenever the camera moves.
+        if (state !== 'future' && !styled[i]) {
+          styled[i] = true
+          const legK = shots.dashWidths[i] / sizeRef.current.width
+          for (const el of headRefs.current.segs[i] ?? []) {
+            if (!el) continue
+            const mode = el.dataset.mode
+            const s = ROUTE_STYLE[mode] ?? ROUTE_STYLE.train
+            el.setAttribute('stroke-width', (mode === 'train' ? 5.5 : s.width) * legK)
+            el.setAttribute(
+              'stroke-dasharray',
+              mode === 'train'
+                ? `${1.5 * legK} ${9 * legK}`
+                : s.dash.map((n) => n * legK).join(' ')
+            )
+            if (mode === 'train') el.setAttribute('stroke-linecap', 'butt')
+          }
+          for (const el of headRefs.current.rails[i] ?? []) {
+            if (el) el.setAttribute('stroke-width', 1.4 * legK)
+          }
+        }
 
         if (state !== legState[i]) {
           group.style.display = state === 'future' ? 'none' : ''
           if (state === 'done') {
-            // Restore the complete geometry once and stop touching this leg.
+            // Restore the complete geometry once, then never touch this leg
+            // again -- a finished leg is fully immutable from here on.
             for (const el of headRefs.current.segs[i] ?? []) {
-              if (el) el.setAttribute('d', el.dataset.full)
+              if (el) {
+                el.style.display = ''
+                el.setAttribute('d', el.dataset.full)
+              }
             }
             for (const el of headRefs.current.rails[i] ?? []) {
-              if (el) el.setAttribute('d', el.dataset.full)
+              if (el) {
+                el.style.display = ''
+                el.setAttribute('d', el.dataset.full)
+              }
             }
           }
           legState[i] = state
         }
 
         if (state === 'active') {
-          const { parts } = truncateLeg(legs[i], legT)
           const segs = headRefs.current.segs[i] ?? []
           const rails = headRefs.current.rails[i] ?? []
           for (let j = 0; j < segs.length; j++) {
-            const d = parts[j]
+            const d = active.parts[j]
             if (segs[j]) {
               segs[j].style.display = d ? '' : 'none'
               if (d) segs[j].setAttribute('d', d)
@@ -206,26 +250,6 @@ export default function Europe2026Page({ onBack }) {
               rails[j].style.display = d ? '' : 'none'
               if (d) rails[j].setAttribute('d', d)
             }
-          }
-        }
-
-        // Dash pattern is set per-leg because each mode has its own rhythm.
-        if (state !== 'future') {
-          for (const el of headRefs.current.segs[i] ?? []) {
-            if (!el) continue
-            const mode = el.dataset.mode
-            const s = ROUTE_STYLE[mode] ?? style
-            el.setAttribute('stroke-width', (mode === 'train' ? 5.5 : s.width) * k)
-            el.setAttribute(
-              'stroke-dasharray',
-              mode === 'train'
-                ? `${1.5 * k} ${9 * k}`
-                : s.dash.map((n) => n * k).join(' ')
-            )
-            if (mode === 'train') el.setAttribute('stroke-linecap', 'butt')
-          }
-          for (const el of headRefs.current.rails[i] ?? []) {
-            if (el) el.setAttribute('stroke-width', 1.4 * k)
           }
         }
       }
@@ -251,24 +275,22 @@ export default function Europe2026Page({ onBack }) {
         if (!off) el.style.transform = `translate3d(${sx}px, ${sy}px, 0)`
       }
 
+      // The vehicle is never hidden. During a dwell it sits parked on the stop
+      // it just reached; during a depart it waits at the origin already facing
+      // the way it's about to go. Because each leg's framing fits both its
+      // endpoints, holding the camera through the draw keeps it on screen for
+      // the whole leg.
       const marker = markerRef.current
-      if (marker) {
-        const active = legs[legIndex]
-        if (active && legT > 0 && legT < 1) {
-          const { head } = truncateLeg(active, legT)
-          if (head) {
-            const sx = toScreenX(head.x)
-            const sy = toScreenY(head.y)
-            // Uniform world->screen scale means the world angle IS the screen
-            // angle -- no conversion needed.
-            const flip = head.mode === 'plane' ? 1 : head.angle > 90 || head.angle < -90 ? -1 : 1
-            marker.style.visibility = 'visible'
-            marker.style.transform = `translate3d(${sx}px, ${sy}px, 0) rotate(${head.angle}deg) scaleY(${flip})`
-            setMarkerGlyph(markerGlyphRef.current, head.mode)
-          }
-        } else {
-          marker.style.visibility = 'hidden'
-        }
+      const head = active.head
+      if (marker && head) {
+        const sx = toScreenX(head.x)
+        const sy = toScreenY(head.y)
+        // Uniform world->screen scale means the world angle IS the screen
+        // angle -- no conversion needed.
+        const flip = glyphFlip(head.mode, head.angle)
+        marker.style.visibility = 'visible'
+        marker.style.transform = `translate3d(${sx}px, ${sy}px, 0) rotate(${head.angle}deg) scaleY(${flip})`
+        setMarkerGlyph(markerGlyphRef.current, head.mode)
       }
 
       // Title card clears out over the opening beat.
@@ -287,8 +309,11 @@ export default function Europe2026Page({ onBack }) {
         overlayRef.current.dataset.settled = String(!moving)
       }
 
-      // --- chapter (the only React-adjacent work, ~29 times total) ----------
-      const current = legT > 0.55 ? legIndex + 1 : Math.max(0, legIndex)
+      // --- chapter (the only React-adjacent work) ---------------------------
+      // Driven by the phase, not by a legT threshold: during a draw the label
+      // names where you're heading, and it flips exactly on arrival.
+      const current =
+        phase === 'draw' ? Math.min(stops.length - 1, legIndex + 1) : Math.max(0, stopIndex)
       if (current !== lastChapterRef.current) {
         lastChapterRef.current = current
         const stop = stops[Math.min(current, stops.length - 1)]

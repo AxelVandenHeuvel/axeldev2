@@ -136,6 +136,7 @@ export const MapStage = forwardRef(function MapStage(
         {legs.map((leg) => (
           <g
             key={leg.index}
+            data-leg={leg.index}
             ref={(el) => (legRefs.current[leg.index] = el)}
             style={{ display: 'none' }}
           >
