@@ -44,37 +44,61 @@ export const PinLayer = forwardRef(function PinLayer(
       className="pointer-events-none absolute inset-0 overflow-hidden"
       data-settled="false"
     >
-      {stops.map((stop, i) =>
-        // The origin anchors the route but isn't somewhere you can read about.
-        stop.origin ? null : (
-        <button
-          key={stop.key}
-          ref={(el) => (pinRefs.current[i] = el)}
-          type="button"
-          onClick={() => onSelect(i)}
-          aria-label={`${stop.name}, ${stop.country} — stop ${stop.destIndex + 1} of ${destinations.length}`}
-          className="eu-pin absolute left-0 top-0 inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full pr-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
-          style={{
-            height: PIN_H,
-            paddingLeft: PIN_LEAD - 5,
-            // Places the centre of the dot, not the corner of the button, on
-            // the city. The transform written each frame would override any
-            // Tailwind -translate utility, so this is done with margins.
-            marginLeft: -PIN_LEAD,
-            marginTop: -PIN_H / 2,
-            visibility: 'hidden',
-          }}
-        >
-          <span className="eu-pin-dot block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-[#a8322a] bg-[#f2e8d0]" />
+      {stops.map((stop, i) => {
+        // Shared geometry: whichever element wraps it, the dot has to land on
+        // the city. The transform written each frame would override any
+        // Tailwind -translate utility, so the centring is done with margins.
+        const box = {
+          height: PIN_H,
+          paddingLeft: PIN_LEAD - 5,
+          marginLeft: -PIN_LEAD,
+          marginTop: -PIN_H / 2,
+          visibility: 'hidden',
+        }
+        const label = (
           <span
             className="eu-pin-label text-[11px] leading-none tracking-[0.12em]"
             style={{ fontFamily: '"IM Fell English SC", Cinzel, serif', color: PAPER.inkDeep }}
           >
             {stop.name}
           </span>
-        </button>
         )
-      )}
+
+        // The origin is still named on the map -- it's where the trip left
+        // from -- but there's nothing to open, so it's a plain div rather than
+        // a button, with a muted marker so it doesn't read as clickable.
+        if (stop.origin) {
+          return (
+            <div
+              key={stop.key}
+              ref={(el) => (pinRefs.current[i] = el)}
+              className="eu-pin eu-pin--origin absolute left-0 top-0 inline-flex items-center gap-2 whitespace-nowrap rounded-full pr-4"
+              style={box}
+            >
+              <span
+                className="eu-pin-dot block h-2 w-2 shrink-0 rounded-full border-2"
+                style={{ borderColor: PAPER.landEdge, backgroundColor: PAPER.highlight }}
+              />
+              {label}
+            </div>
+          )
+        }
+
+        return (
+          <button
+            key={stop.key}
+            ref={(el) => (pinRefs.current[i] = el)}
+            type="button"
+            onClick={() => onSelect(i)}
+            aria-label={`${stop.name}, ${stop.country} — stop ${stop.destIndex + 1} of ${destinations.length}`}
+            className="eu-pin absolute left-0 top-0 inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full pr-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
+            style={box}
+          >
+            <span className="eu-pin-dot block h-2.5 w-2.5 shrink-0 rounded-full border-2 border-[#a8322a] bg-[#f2e8d0]" />
+            {label}
+          </button>
+        )
+      })}
 
       {/*
         The vehicle. Rides the head of the drawing line.

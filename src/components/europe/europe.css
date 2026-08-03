@@ -39,6 +39,15 @@
   transition: box-shadow 160ms ease-out;
 }
 
+/* The origin is a label, not a control: never takes a click, never lights up. */
+.eu-pin--origin {
+  pointer-events: none;
+  cursor: default;
+}
+[data-settled='true'] .eu-pin--origin:hover {
+  background-color: transparent;
+}
+
 /* Touch devices have no hover, so pins stay fully lit and reachable. */
 @media (hover: none) {
   .eu-pin {
