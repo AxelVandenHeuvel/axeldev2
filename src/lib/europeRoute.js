@@ -158,11 +158,26 @@ export const stops = itinerary.map((entry, i) => {
     photos: place.photos ?? [],
     visit: entry.visit,
     hero: !!entry.hero,
+    origin: !!entry.origin,
     arriveBy: entry.via?.mode ?? null,
     departBy: itinerary[i + 1]?.via?.mode ?? null,
     x,
     y,
   }
+})
+
+/**
+ * The places actually visited -- everything the UI treats as selectable.
+ *
+ * Separate from `stops` because the route, camera and marker all still need
+ * the origin as a real waypoint; it's only the interface that shouldn't offer
+ * it as somewhere to read about.
+ */
+export const destinations = stops.filter((s) => !s.origin)
+
+// Position within `destinations`, for numbering that skips the origin.
+destinations.forEach((stop, i) => {
+  stop.destIndex = i
 })
 
 /** Transfer points -- rendered as small ticks, not full pins, and not clickable. */

@@ -13,7 +13,7 @@ import {
 } from '../components/europe/useScrollDirector.js'
 import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE_STYLE, VIGNETTE } from '../components/europe/paper.js'
 import { buildTimeline, progressForStop, sampleTimeline } from '../lib/europeCamera.js'
-import { legs, stops } from '../lib/europeRoute.js'
+import { destinations, legs, stops } from '../lib/europeRoute.js'
 import { meta } from '../data/europe2026.js'
 
 import '../components/europe/europe.css'
@@ -335,11 +335,16 @@ export default function Europe2026Page({ onBack }) {
         const stop = stops[Math.min(current, stops.length - 1)]
         if (chapterRef.current) chapterRef.current.textContent = stop.name
         if (counterRef.current) {
-          counterRef.current.textContent = `${String(current + 1).padStart(2, '0')} / ${stops.length} · ${stop.country}`
+          // The origin is named but not numbered -- it isn't one of the places
+          // the trip counts as having visited.
+          counterRef.current.textContent = stop.origin
+            ? `departure · ${stop.country}`
+            : `${String(stop.destIndex + 1).padStart(2, '0')} / ${destinations.length} · ${stop.country}`
         }
+        const reached = stop.origin ? -1 : stop.destIndex
         const ticks = railRef.current?.querySelectorAll('[data-rail-bar]') ?? []
         ticks.forEach((bar, i) => {
-          const on = i <= current
+          const on = i <= reached
           bar.style.width = on ? '26px' : '14px'
           bar.style.backgroundColor = on ? PAPER.pin : `${PAPER.landEdge}66`
         })
@@ -359,10 +364,14 @@ export default function Europe2026Page({ onBack }) {
     window.scrollTo({ top: track.offsetTop + p * total, behavior: 'smooth' })
   }, [])
 
+  // Steps through destinations, so the origin is never landed on.
   const stepJournal = useCallback((delta) => {
     setJournalIndex((cur) => {
       if (cur === null) return cur
-      return Math.min(stops.length - 1, Math.max(0, cur + delta))
+      const at = stops[cur]?.destIndex
+      if (at === undefined) return cur
+      const next = Math.min(destinations.length - 1, Math.max(0, at + delta))
+      return destinations[next].index
     })
   }, [])
 

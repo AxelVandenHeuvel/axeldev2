@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 
-import { stops } from '../../lib/europeRoute.js'
+import { destinations, stops } from '../../lib/europeRoute.js'
 import { GLYPH } from './glyphs.js'
 import { PAPER } from './paper.js'
 
@@ -44,13 +44,15 @@ export const PinLayer = forwardRef(function PinLayer(
       className="pointer-events-none absolute inset-0 overflow-hidden"
       data-settled="false"
     >
-      {stops.map((stop, i) => (
+      {stops.map((stop, i) =>
+        // The origin anchors the route but isn't somewhere you can read about.
+        stop.origin ? null : (
         <button
           key={stop.key}
           ref={(el) => (pinRefs.current[i] = el)}
           type="button"
           onClick={() => onSelect(i)}
-          aria-label={`${stop.name}, ${stop.country} — stop ${i + 1} of ${stops.length}`}
+          aria-label={`${stop.name}, ${stop.country} — stop ${stop.destIndex + 1} of ${destinations.length}`}
           className="eu-pin absolute left-0 top-0 inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full pr-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
           style={{
             height: PIN_H,
@@ -71,7 +73,8 @@ export const PinLayer = forwardRef(function PinLayer(
             {stop.name}
           </span>
         </button>
-      ))}
+        )
+      )}
 
       {/*
         The vehicle. Rides the head of the drawing line.

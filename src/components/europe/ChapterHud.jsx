@@ -1,6 +1,6 @@
 import { forwardRef, useState } from 'react'
 
-import { stops } from '../../lib/europeRoute.js'
+import { destinations } from '../../lib/europeRoute.js'
 import { PAPER } from './paper.js'
 
 /**
@@ -71,14 +71,14 @@ export const ChapterHud = forwardRef(function ChapterHud(
       {!isStatic && (
         <div className="pointer-events-auto absolute bottom-6 right-4 sm:bottom-9 sm:right-8">
           <div ref={railRef} className="flex flex-col items-end gap-[5px]">
-            {stops.map((stop, i) => (
+            {destinations.map((stop) => (
               <button
                 key={stop.key}
                 type="button"
-                onClick={() => onJump(i)}
+                onClick={() => onJump(stop.index)}
                 aria-label={`Jump to ${stop.name}`}
                 className="group flex items-center gap-2 focus:outline-none"
-                data-rail-tick={i}
+                data-rail-tick={stop.destIndex}
               >
                 <span
                   className="hidden text-[10px] tracking-wider opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 sm:inline"
@@ -119,13 +119,13 @@ export const ChapterHud = forwardRef(function ChapterHud(
             overscrollBehavior: 'contain',
           }}
         >
-          {stops.map((stop, i) => (
+          {destinations.map((stop) => (
             <button
               key={stop.key}
               type="button"
               onClick={() => {
                 setIndexOpen(false)
-                onOpen(i)
+                onOpen(stop.index)
               }}
               className="flex w-full items-baseline justify-between gap-3 px-2 py-1.5 text-left transition-colors hover:bg-[#c4ad86]/30 focus:outline-none focus-visible:bg-[#c4ad86]/30"
             >
@@ -136,7 +136,7 @@ export const ChapterHud = forwardRef(function ChapterHud(
                 {stop.name}
               </span>
               <span className="font-mono text-[10px]" style={{ color: PAPER.landEdge }}>
-                {String(i + 1).padStart(2, '0')}
+                {String(stop.destIndex + 1).padStart(2, '0')}
               </span>
             </button>
           ))}

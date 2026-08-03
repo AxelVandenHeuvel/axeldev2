@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 
 import { landFine } from '../../data/europeMap.js'
-import { legs, routeBounds, segmentPath, stops, transfers } from '../../lib/europeRoute.js'
+import { destinations, legs, routeBounds, segmentPath, stops, transfers } from '../../lib/europeRoute.js'
 import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE_STYLE, VIGNETTE } from './paper.js'
 
 /**
@@ -84,10 +84,10 @@ export function StaticRouteMap({ onSelect }) {
                   key={stop.key}
                   cx={stop.x}
                   cy={stop.y}
-                  r={3.2 * k}
+                  r={(stop.origin ? 2.2 : 3.2) * k}
                   fill={PAPER.highlight}
-                  stroke={PAPER.pin}
-                  strokeWidth={1.8 * k}
+                  stroke={stop.origin ? PAPER.landEdge : PAPER.pin}
+                  strokeWidth={(stop.origin ? 1.2 : 1.8) * k}
                 />
               ))}
             </g>
@@ -101,17 +101,17 @@ export function StaticRouteMap({ onSelect }) {
         </div>
 
         <ol className="mt-10 list-none p-0">
-          {stops.map((stop, i) => (
+          {destinations.map((stop) => (
             <li key={stop.key}>
               <button
                 type="button"
-                onClick={() => onSelect(i)}
+                onClick={() => onSelect(stop.index)}
                 className="flex w-full items-baseline justify-between gap-4 border-t py-3.5 text-left transition-colors hover:bg-[#c4ad86]/25 focus:outline-none focus-visible:bg-[#c4ad86]/25"
                 style={{ borderColor: `${PAPER.landEdge}44` }}
               >
                 <span className="flex items-baseline gap-3">
                   <span className="font-mono text-[10px]" style={{ color: PAPER.landEdge }}>
-                    {String(i + 1).padStart(2, '0')}
+                    {String(stop.destIndex + 1).padStart(2, '0')}
                   </span>
                   <span
                     className="text-base tracking-wide"

@@ -30,11 +30,15 @@
  *                 drawn line visibly changes character at the transfer
  *   hero       gives this stop a full camera settle rather than a pass-through
  *   visit      disambiguates repeat visits in the journal header
+ *   origin     marks where the trip departed FROM rather than somewhere it
+ *              visited. Still anchors the first leg and gets a title beat, but
+ *              is not selectable: no pin, no index entry, no journal, and it
+ *              isn't counted in "N of 20".
  */
 
 export const meta = {
   title: 'Europe 2026',
-  subtitle: 'twenty legs · twenty-one stops',
+  subtitle: 'twenty legs · twenty destinations',
   dates: 'summer 2026',
 }
 
@@ -219,7 +223,10 @@ export const places = {
 
 /** 21 entries -> 20 legs. Entry i is reached FROM entry i-1 by entry i's `via`. */
 export const itinerary = [
-  { place: 'seattle', hero: true },
+  // origin: where the journey starts from, not somewhere it visits. Still
+  // anchors the first leg and gets a title beat, but is not a selectable
+  // destination -- no pin, no index entry, no journal, not counted.
+  { place: 'seattle', hero: true, origin: true },
   { place: 'reykjavik', hero: true, via: { mode: 'plane', geo: 'gc' } },
   { place: 'amsterdam', hero: true, via: { mode: 'plane', geo: 'gc' } },
   { place: 'berlin', via: { mode: 'train' } },

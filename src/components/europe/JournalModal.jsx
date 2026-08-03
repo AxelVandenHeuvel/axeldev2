@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-import { stops } from '../../lib/europeRoute.js'
+import { destinations, stops } from '../../lib/europeRoute.js'
 import { GRAIN_URL, PAPER } from './paper.js'
 
 /**
@@ -103,7 +103,7 @@ export function JournalModal({ stopIndex, onClose, onStep }) {
             className="text-[10px] uppercase tracking-[0.32em]"
             style={{ color: PAPER.landEdge, fontFamily: '"IM Fell English SC", serif' }}
           >
-            stop {stopIndex + 1} of {stops.length}
+            stop {stop.destIndex + 1} of {destinations.length}
             {stop.visit === 2 && ' · second visit'}
           </p>
 
@@ -194,7 +194,7 @@ export function JournalModal({ stopIndex, onClose, onStep }) {
           <button
             type="button"
             onClick={() => onStep(-1)}
-            disabled={stopIndex === 0}
+            disabled={stop.destIndex === 0}
             className="px-2 py-1 text-xs tracking-wide transition-opacity hover:opacity-60 disabled:pointer-events-none disabled:opacity-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
             style={{ color: PAPER.inkBody, fontFamily: '"IM Fell English SC", serif' }}
           >
@@ -203,7 +203,7 @@ export function JournalModal({ stopIndex, onClose, onStep }) {
           <button
             type="button"
             onClick={() => onStep(1)}
-            disabled={stopIndex === stops.length - 1}
+            disabled={stop.destIndex === destinations.length - 1}
             className="px-2 py-1 text-xs tracking-wide transition-opacity hover:opacity-60 disabled:pointer-events-none disabled:opacity-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
             style={{ color: PAPER.inkBody, fontFamily: '"IM Fell English SC", serif' }}
           >
