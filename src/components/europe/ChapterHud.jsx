@@ -97,12 +97,28 @@ export const ChapterHud = forwardRef(function ChapterHud(
         </div>
       )}
 
+      {/*
+        The index panel's background lives on the scrolling element itself.
+        It used to be an `absolute inset-0` child, which sizes to the
+        container's visible box rather than its scroll content -- so once the
+        list outgrew the panel, the last few stops rendered past the bottom of
+        their own backdrop.
+
+        Height is capped against the viewport rather than a flat 70svh, so the
+        panel can't run off the bottom of the screen however many stops the
+        itinerary grows to.
+      */}
       {indexOpen && (
-        <div className="pointer-events-auto absolute right-4 top-14 z-40 max-h-[70svh] w-56 overflow-y-auto p-3 shadow-xl sm:right-6 sm:top-16">
-          <div
-            className="absolute inset-0 -z-10"
-            style={{ backgroundColor: PAPER.highlight, border: `1px solid ${PAPER.landEdge}55` }}
-          />
+        <div
+          data-index-panel
+          className="pointer-events-auto absolute right-4 top-14 z-40 w-56 overflow-y-auto rounded-sm p-3 shadow-xl sm:right-6 sm:top-16"
+          style={{
+            maxHeight: 'calc(100svh - 6rem)',
+            backgroundColor: PAPER.highlight,
+            border: `1px solid ${PAPER.landEdge}55`,
+            overscrollBehavior: 'contain',
+          }}
+        >
           {stops.map((stop, i) => (
             <button
               key={stop.key}
