@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 
 import { landFine } from '../../data/europeMap.js'
 import { destinations, legs, routeBounds, segmentPath, stops, transfers } from '../../lib/europeRoute.js'
-import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE_STYLE, VIGNETTE } from './paper.js'
+import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE, VIGNETTE } from './paper.js'
 
 /**
  * The whole route in one fitted view, plus a plain list of stops.
@@ -56,25 +56,17 @@ export function StaticRouteMap({ onSelect }) {
               ))}
             </g>
 
-            <g fill="none" strokeLinecap="round">
+            <g
+              fill="none"
+              stroke={ROUTE.color}
+              strokeWidth={ROUTE.width * k}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               {legs.map((leg) =>
-                leg.segments.map((seg, j) => {
-                  const style = ROUTE_STYLE[seg.mode] ?? ROUTE_STYLE.train
-                  const d = segmentPath(seg)
-                  return (
-                    <g key={`${leg.index}-${j}`}>
-                      {seg.mode === 'train' && (
-                        <path d={d} stroke={style.color} strokeWidth={1.4 * k} strokeOpacity="0.8" />
-                      )}
-                      <path
-                        d={d}
-                        stroke={style.color}
-                        strokeWidth={style.width * k}
-                        strokeDasharray={style.dash.map((n) => n * k).join(' ')}
-                      />
-                    </g>
-                  )
-                })
+                leg.segments.map((seg, j) => (
+                  <path key={`${leg.index}-${j}`} d={segmentPath(seg)} />
+                ))
               )}
             </g>
 

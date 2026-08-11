@@ -11,7 +11,7 @@ import {
   useScrollDirector,
   useStageSize,
 } from '../components/europe/useScrollDirector.js'
-import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE_STYLE, VIGNETTE } from '../components/europe/paper.js'
+import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE, VIGNETTE } from '../components/europe/paper.js'
 import { buildTimeline, progressForStop, sampleTimeline } from '../lib/europeCamera.js'
 import { destinations, legs, stops } from '../lib/europeRoute.js'
 import { meta } from '../data/europe2026.js'
@@ -67,7 +67,7 @@ export default function Europe2026Page({ onBack }) {
   const rhumbRef = useRef(null)
   const routeRef = useRef(null)
   const legRefs = useRef([])
-  const headRefs = useRef({ segs: [], rails: [] })
+  const headRefs = useRef({ segs: [] })
   const overlayRef = useRef(null)
   const pinRefs = useRef([])
   const markerRef = useRef(null)
@@ -86,7 +86,6 @@ export default function Europe2026Page({ onBack }) {
   const lastLodRef = useRef(null)
   const lastLegStateRef = useRef([])
   const lastStyleKRef = useRef(-1)
-  const lastStyledLegRef = useRef(-99)
   const settledRef = useRef(null)
 
   // Fonts: injected here rather than @import'd globally, so the rest of the
@@ -186,46 +185,21 @@ export default function Europe2026Page({ onBack }) {
       }
 
       // --- route styling ------------------------------------------------------
-      // Sleepers, dashes and stroke widths are constant in SCREEN pixels, so a
-      // leg drawn at one altitude looks identical to one drawn at another.
+      // A single red line for the whole journey, constant in SCREEN pixels so
+      // a leg drawn at one altitude looks identical to one drawn at another.
       //
-      // Sizing them in world units instead (which an earlier version did, to
-      // stop the dash phase sliding as the camera moved) means a leg keeps the
-      // scale it was drawn at, so an earlier wide-shot leg towers over a later
-      // close-up one.
-      //
-      // Screen-constant sizing is safe now only because of the camera's
+      // Screen-constant sizing is safe because of the camera's
       // one-motion-per-phase rule: k changes ONLY during a zoom phase, and
-      // during a zoom the camera is stationary and nothing is being drawn.
-      // Through every draw and every dwell k is fixed, so the pattern is
-      // pinned exactly when it would otherwise be seen to crawl.
-      //
-      // Restyling is therefore rare -- only when the zoom actually moves, or
-      // when a new leg appears -- not every frame.
-      const legState = lastLegStateRef.current
-      const kChanged = Math.abs(k - lastStyleKRef.current) > 1e-6
-      const legChanged = legIndex !== lastStyledLegRef.current
-
-      if (kChanged || legChanged) {
+      // during a zoom the camera is stationary with nothing being drawn. So
+      // restyling is rare -- only when the zoom actually moves -- rather than
+      // every frame.
+      if (Math.abs(k - lastStyleKRef.current) > 1e-6) {
         lastStyleKRef.current = k
-        lastStyledLegRef.current = legIndex
-        for (let i = 0; i <= legIndex && i < legs.length; i++) {
-          for (const el of headRefs.current.segs[i] ?? []) {
-            if (!el) continue
-            const mode = el.dataset.mode
-            const s = ROUTE_STYLE[mode] ?? ROUTE_STYLE.train
-            el.setAttribute('stroke-width', (mode === 'train' ? 5.5 : s.width) * k)
-            el.setAttribute(
-              'stroke-dasharray',
-              mode === 'train' ? `${1.5 * k} ${9 * k}` : s.dash.map((n) => n * k).join(' ')
-            )
-            if (mode === 'train') el.setAttribute('stroke-linecap', 'butt')
-          }
-          for (const el of headRefs.current.rails[i] ?? []) {
-            if (el) el.setAttribute('stroke-width', 1.4 * k)
-          }
-        }
+        routeRef.current?.setAttribute('stroke-width', ROUTE.width * k)
       }
+
+      // --- route reveal -------------------------------------------------------
+      const legState = lastLegStateRef.current
 
       for (let i = 0; i < legs.length; i++) {
         const group = legRefs.current[i]
@@ -244,29 +218,17 @@ export default function Europe2026Page({ onBack }) {
                 el.setAttribute('d', el.dataset.full)
               }
             }
-            for (const el of headRefs.current.rails[i] ?? []) {
-              if (el) {
-                el.style.display = ''
-                el.setAttribute('d', el.dataset.full)
-              }
-            }
           }
           legState[i] = state
         }
 
         if (state === 'active') {
           const segs = headRefs.current.segs[i] ?? []
-          const rails = headRefs.current.rails[i] ?? []
           for (let j = 0; j < segs.length; j++) {
             const d = active.parts[j]
-            if (segs[j]) {
-              segs[j].style.display = d ? '' : 'none'
-              if (d) segs[j].setAttribute('d', d)
-            }
-            if (rails[j]) {
-              rails[j].style.display = d ? '' : 'none'
-              if (d) rails[j].setAttribute('d', d)
-            }
+            if (!segs[j]) continue
+            segs[j].style.display = d ? '' : 'none'
+            if (d) segs[j].setAttribute('d', d)
           }
         }
       }

@@ -3,7 +3,7 @@ import { forwardRef, useMemo } from 'react'
 import { landCoarse, landFine } from '../../data/europeMap.js'
 import { legs, segmentPath, transfers } from '../../lib/europeRoute.js'
 import { R, project } from '../../lib/projection.js'
-import { PAPER, ROUTE_STYLE } from './paper.js'
+import { PAPER, ROUTE } from './paper.js'
 
 /**
  * The animated map. Everything in here lives inside the scrubbing viewBox.
@@ -126,13 +126,19 @@ export const MapStage = forwardRef(function MapStage(
       </g>
 
       {/*
-        One path per sub-segment (trains get a second, continuous underlay so
-        the fat dashes on top read as sleepers). Each carries its complete
-        geometry in data-full; the parent overwrites `d` only on the leg
-        currently drawing, and restores it from data-full once that leg
-        completes. Every other path is written once and never touched again.
+        One path per sub-segment, all identical: a single red line, as in the
+        films. Each carries its complete geometry in data-full; the parent
+        overwrites `d` only on the leg currently drawing and restores it from
+        data-full once that leg completes, so every other path is written once
+        and never touched again.
       */}
-      <g ref={routeRef} fill="none" strokeLinecap="round">
+      <g
+        ref={routeRef}
+        fill="none"
+        stroke={ROUTE.color}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         {legs.map((leg) => (
           <g
             key={leg.index}
@@ -141,35 +147,18 @@ export const MapStage = forwardRef(function MapStage(
             style={{ display: 'none' }}
           >
             {leg.segments.map((seg, j) => {
-              const style = ROUTE_STYLE[seg.mode] ?? ROUTE_STYLE.train
               const full = segmentPath(seg)
               return (
-                <g key={j}>
-                  {seg.mode === 'train' && (
-                    <path
-                      ref={(el) => {
-                        const rails = (headRefs.current.rails[leg.index] ??= [])
-                        rails[j] = el
-                      }}
-                      d={full}
-                      data-full={full}
-                      data-role="rail"
-                      stroke={style.color}
-                      strokeOpacity="0.8"
-                    />
-                  )}
-                  <path
-                    ref={(el) => {
-                      const segs = (headRefs.current.segs[leg.index] ??= [])
-                      segs[j] = el
-                    }}
-                    d={full}
-                    data-full={full}
-                    data-role="line"
-                    data-mode={seg.mode}
-                    stroke={style.color}
-                  />
-                </g>
+                <path
+                  key={j}
+                  ref={(el) => {
+                    const segs = (headRefs.current.segs[leg.index] ??= [])
+                    segs[j] = el
+                  }}
+                  d={full}
+                  data-full={full}
+                  data-role="line"
+                />
               )
             })}
           </g>

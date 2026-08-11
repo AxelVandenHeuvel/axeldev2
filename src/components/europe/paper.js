@@ -19,19 +19,23 @@ export const PAPER = {
   graticule: '#b09a76',
   shadow: '#c4ad86',
   burn: '#8a6f4a',
-  routePlane: '#9c2b23',
-  routeRail: '#7d4a2e',
-  routeBus: '#8f6a3c',
+  route: '#a8322a', // the one red line
   pin: '#a8322a',
   inkDeep: '#3d2b1a', // display type
   inkBody: '#5a4632', // body copy
 }
 
-export const ROUTE_STYLE = {
-  plane: { color: PAPER.routePlane, width: 2.4, dash: [10, 9] },
-  train: { color: PAPER.routeRail, width: 2.0, dash: [7, 5] },
-  bus: { color: PAPER.routeBus, width: 2.0, dash: [2.5, 4] },
-}
+/**
+ * One line for the whole journey.
+ *
+ * The films don't distinguish how you travelled -- it's a single solid red
+ * line advancing across the map, and that uniformity is most of what makes it
+ * read as the sequence it's imitating. Plane, train and bus differ only in the
+ * marker riding the head of the line and in how much the path bows.
+ *
+ * Width is in screen pixels; see the styling block in Europe2026Page.
+ */
+export const ROUTE = { color: PAPER.route, width: 2.8 }
 
 const svgTile = (w, h, inner) =>
   `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'%3E${inner}%3C/svg%3E")`
