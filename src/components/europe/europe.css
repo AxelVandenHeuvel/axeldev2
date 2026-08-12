@@ -1,0 +1,88 @@
+/* Europe 2026 cutscene. Scoped to this page only. */
+
+/* Small viewport height: 100vh on iOS includes the address bar, so the sticky
+   stage would overflow and jitter as the bar hides. */
+.eu-stage {
+  height: 100svh;
+}
+@supports not (height: 100svh) {
+  .eu-stage {
+    height: 100vh;
+  }
+}
+
+/* Pins are inert while the camera moves, then fade up when it settles --
+   this is the signal to the viewer that stopping makes them interactive. */
+.eu-pin {
+  opacity: 0.55;
+  background-color: transparent;
+  transition:
+    opacity 220ms ease-out,
+    background-color 160ms ease-out;
+}
+[data-settled='true'] .eu-pin {
+  opacity: 1;
+}
+
+/* The whole pill is the target, so the hover state covers all of it rather
+   than only ringing the dot -- otherwise nothing suggests the name is
+   clickable too. */
+[data-settled='true'] .eu-pin:hover,
+[data-settled='true'] .eu-pin:focus-visible {
+  background-color: rgba(196, 173, 134, 0.32);
+}
+[data-settled='true'] .eu-pin:hover .eu-pin-dot,
+[data-settled='true'] .eu-pin:focus-visible .eu-pin-dot {
+  box-shadow: 0 0 0 4px rgba(168, 50, 42, 0.22);
+}
+.eu-pin-dot {
+  transition: box-shadow 160ms ease-out;
+}
+
+/* The origin is a label, not a control: never takes a click, never lights up. */
+.eu-pin--origin {
+  pointer-events: none;
+  cursor: default;
+}
+[data-settled='true'] .eu-pin--origin:hover {
+  background-color: transparent;
+}
+
+/* Touch devices have no hover, so pins stay fully lit and reachable. */
+@media (hover: none) {
+  .eu-pin {
+    opacity: 1;
+  }
+}
+
+/* Opacity and offset are driven from the frame loop, not a scroll-timeline --
+   scroll-driven CSS animations aren't reliably available yet, and everything
+   else on this page is already ref-driven. */
+.eu-titlecard {
+  will-change: opacity, transform;
+}
+
+.eu-journal {
+  animation: eu-journal-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes eu-journal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eu-journal,
+  .eu-titlecard {
+    animation: none;
+  }
+  .eu-pin {
+    transition: none;
+  }
+}
