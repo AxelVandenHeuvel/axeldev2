@@ -8,7 +8,7 @@ import { travel } from './data/travel'
 const panels = {
   about: {
     title: 'about',
-    content: `I'm a Computer Science senior at the University of Colorado Boulder, graduating in 2026. Recently I've been interested in AI tools for development and I'm constantly looking to expand my knowledge in software engineering.\n\nOutside of coding, I enjoy lifting weights, hiking, mechanical keyboards, and astronomy.\n\n---\n\nEducation\n\nUniversity of Colorado Boulder\nB.S. Computer Science, 3.64 GPA`,
+    content: `I'm a Computer Science senior at the University of Colorado Boulder, graduating in 2026. Recently I've been interested in AI tools for development and I'm constantly looking to expand my knowledge in software engineering.\n\nOutside of coding, I enjoy lifting weights, hiking, mechanical keyboards, and astronomy.\n\n---\n\nEducation\n\nUniversity of Colorado Boulder\nB.S. Computer Science, 3.66 GPA`,
   },
   resume: {
     title: 'resume',
