@@ -18,6 +18,52 @@ const panelContent = {
   },
 }
 
+// FIGlet "Pagga". Regenerate with: npx figlet -f Pagga "AXEL"
+const FIRST_NAME = [
+  '░█▀█░█░█░█▀▀░█░░',
+  '░█▀█░▄▀▄░█▀▀░█░░',
+  '░▀░▀░▀░▀░▀▀▀░▀▀▀',
+]
+
+const LAST_NAME = [
+  '░█░█░█▀█░█▀█░█▀▄░█▀▀░█▀█░█░█░█▀▀░█░█░█░█░█▀▀░█░░',
+  '░▀▄▀░█▀█░█░█░█░█░█▀▀░█░█░█▀█░█▀▀░█░█░▀▄▀░█▀▀░█░░',
+  '░░▀░░▀░▀░▀░▀░▀▀░░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀▀',
+]
+
+/**
+ * Sized from the viewport so the 48-column last name always fits inside the
+ * 1.5rem gutters (a monospace cell is ~0.6em, so 48 columns is ~29em), capped
+ * at 16px on wide screens. Both names share the size so they read as a pair.
+ */
+const NAME_FONT_SIZE = 'clamp(8px, calc((100vw - 3rem) / 29.5), 16px)'
+
+/**
+ * Block-letter text in a muted ember that echoes the black hole's glow; the
+ * ░ field is drawn faint so the letters carry the weight.
+ */
+function BlockText({ lines }) {
+  return (
+    <pre
+      aria-hidden="true"
+      className="text-[#c07a4e] leading-none font-mono select-none mx-auto w-fit"
+      style={{ fontSize: NAME_FONT_SIZE }}
+    >
+      {lines.map((line, i) => (
+        <span key={i} className="block">
+          {line.split(/(░+)/).map((run, j) =>
+            run.startsWith('░') ? (
+              <span key={j} className="text-[#c07a4e]/15">{run}</span>
+            ) : (
+              run
+            )
+          )}
+        </span>
+      ))}
+    </pre>
+  )
+}
+
 export function HomePage({ panel }) {
   const active = panel ? panelContent[panel] : null
   const close = () => navigate('/')
@@ -30,7 +76,7 @@ export function HomePage({ panel }) {
   }, [panel])
 
   return (
-    <div className="h-dvh bg-[#f2ebe0] flex flex-col justify-between px-6 pt-14 pb-8 md:py-8 overflow-hidden relative">
+    <main className="h-dvh bg-[#f2ebe0] flex flex-col justify-between px-6 pt-14 pb-8 md:py-8 overflow-hidden relative">
       <nav className="absolute left-1/2 -translate-x-1/2 top-4 flex flex-row gap-6 md:left-8 md:translate-x-0 md:top-1/2 md:-translate-y-1/2 md:flex-col md:gap-4 font-mono text-sm text-neutral-800 z-20">
         {panels.map((link) => (
           <Link
@@ -87,19 +133,12 @@ export function HomePage({ panel }) {
         </div>
       )}
 
-      <pre className="text-neutral-800 text-[10px] sm:text-xs md:text-sm leading-tight font-mono select-none mx-auto w-fit">
-{`____ _  _ ____ _
-|__|  \\/  |___ |
-|  | _/\\_ |___ |___`}
-      </pre>
+      <h1 className="sr-only">Axel VandenHeuvel</h1>
+      <BlockText lines={FIRST_NAME} />
 
       <AsciiBlackHole onEnter={() => navigate('/posts')} />
 
-      <pre className="text-neutral-800 text-[10px] sm:text-xs md:text-sm leading-tight font-mono select-none mx-auto w-fit">
-{`_  _ ____ _  _ ___  ____ _  _ _  _ ____ _  _ _  _ ____ _
-|  | |__| |\\ | |  \\ |___ |\\ | |__| |___ |  | |  | |___ |
- \\/  |  | | \\| |__/ |___ | \\| |  | |___ |__|  \\/  |___ |___`}
-      </pre>
-    </div>
+      <BlockText lines={LAST_NAME} />
+    </main>
   )
 }
