@@ -9,6 +9,8 @@
  *   date   - Format: "MM/DD/YY"
  *
  * Optional fields for the detail page:
+ *   slug   - URL segment, e.g. /posts/cs/<slug>. Defaults to the title,
+ *            lowercased and hyphenated.
  *   body   - Write-up (supports \n for line breaks)
  *   images - Array of image objects: { src: "/images/example.png", caption: "optional caption" }
  *   links  - Array of link objects: { label: "Map", href: "https://..." }

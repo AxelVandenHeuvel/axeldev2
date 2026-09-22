@@ -62,6 +62,23 @@
   will-change: opacity, transform;
 }
 
+/* A soft wash of the paper color behind the title, so map lines fade out
+   under the lettering instead of cutting through it. */
+.eu-titlehalo {
+  isolation: isolate;
+}
+.eu-titlehalo::before {
+  content: '';
+  position: absolute;
+  inset: -3.5rem -3rem;
+  z-index: -1;
+  background: radial-gradient(
+    closest-side,
+    rgba(232, 220, 192, 0.94) 55%,
+    rgba(232, 220, 192, 0)
+  );
+}
+
 .eu-journal {
   animation: eu-journal-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }

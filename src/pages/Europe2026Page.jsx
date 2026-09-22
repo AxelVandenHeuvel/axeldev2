@@ -48,7 +48,7 @@ function graticuleTier(w) {
   return '2'
 }
 
-export default function Europe2026Page({ onBack }) {
+export default function Europe2026Page({ backTo }) {
   const reducedMotion = usePrefersReducedMotion()
   const [forceStatic, setForceStatic] = useState(false)
   const [journalIndex, setJournalIndex] = useState(null)
@@ -339,7 +339,7 @@ export default function Europe2026Page({ onBack }) {
 
   const hud = (
     <ChapterHud
-      onBack={onBack}
+      backTo={backTo}
       onJump={jumpToStop}
       onOpen={setJournalIndex}
       onToggleStatic={() => setForceStatic((v) => !v)}
@@ -419,24 +419,27 @@ export default function Europe2026Page({ onBack }) {
               ref={titleRef}
               className="pointer-events-none absolute inset-x-0 top-[22%] flex flex-col items-center px-6 text-center eu-titlecard"
             >
-              <h1
-                className="text-4xl leading-none tracking-[0.06em] sm:text-6xl"
-                style={{ color: PAPER.inkDeep, fontFamily: 'Cinzel, serif' }}
-              >
-                {meta.title}
-              </h1>
-              <p
-                className="mt-3 text-[11px] uppercase tracking-[0.34em] sm:text-xs"
-                style={{ color: PAPER.inkBody, fontFamily: '"IM Fell English SC", serif' }}
-              >
-                {meta.subtitle}
-              </p>
-              <p
-                className="mt-8 font-mono text-[10px] tracking-widest opacity-70"
-                style={{ color: PAPER.inkBody }}
-              >
-                scroll to begin
-              </p>
+              {/* The halo keeps coastlines from running through the lettering. */}
+              <div className="eu-titlehalo relative flex flex-col items-center">
+                <h1
+                  className="text-4xl leading-none tracking-[0.06em] sm:text-6xl"
+                  style={{ color: PAPER.inkDeep, fontFamily: 'Cinzel, serif' }}
+                >
+                  {meta.title}
+                </h1>
+                <p
+                  className="mt-3 text-[11px] uppercase tracking-[0.34em] [text-wrap:balance] sm:text-xs"
+                  style={{ color: PAPER.inkBody, fontFamily: '"IM Fell English SC", serif' }}
+                >
+                  {meta.subtitle}
+                </p>
+                <p
+                  className="mt-8 font-mono text-[10px] tracking-widest opacity-70"
+                  style={{ color: PAPER.inkBody }}
+                >
+                  scroll to begin
+                </p>
+              </div>
             </div>
           </div>
         </div>

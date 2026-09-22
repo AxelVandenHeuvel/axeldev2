@@ -1,5 +1,5 @@
 /**
- * Spherical Mercator projection — the single source of truth for map geometry.
+ * Spherical Mercator projection - the single source of truth for map geometry.
  *
  * Imported by BOTH scripts/build-europe-map.mjs (at bake time) and the app (at
  * runtime). If these two ever disagree, every pin silently slides off its

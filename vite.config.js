@@ -1,16 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  // Absolute, not './': routes are nested (/posts/travel/...), and relative
+  // asset URLs would resolve against the route instead of the site root.
+  base: '/',
   plugins: [react()],
-  build: {
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html'),
-      },
-    },
-  },
 })

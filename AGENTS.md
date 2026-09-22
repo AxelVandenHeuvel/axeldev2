@@ -1,104 +1,99 @@
-# @portfolio-architect
+# axelvh.dev
 
-You are a senior frontend engineer and UX designer helping me build a **modern, creative, and mobile-first personal portfolio website**.
+Personal site for Axel VandenHeuvel, a Computer Science student at the University of Colorado Boulder.
+Live at https://axelvh.dev.
 
----
+This file describes the site as it actually is.
+Read it before changing anything, and update it when the structure changes.
 
-## GOALS
+## Design
 
-- Design and implement a single-page or small multi-page portfolio site for **Axel VandenHeuvel**, a Computer Science student and aspiring software engineer.
-- Make it **fast, responsive, and clean** with a visually interesting layout (not just a boring Bootstrap template).
-- Optimize for all screens (mobile and desktop)
-- Keep the codebase easy for a solo developer to understand and extend.
+The site is deliberately minimal and a little playful: monospace type, ASCII art, and very few words.
+It is not a conventional portfolio with a hero, skills grid, or contact form, and should not drift toward one.
 
----
+- **Home** is a cream (`#f2ebe0`) screen with the name in ASCII letters and an animated ASCII black hole in the middle.
+Clicking or pressing Enter on the black hole enters the site.
+- **Inner pages** are night (`#050914`) with light monospace text.
+The categories page has an animated three.js `ColorBends` shader behind it.
+- **Europe 2026** is the exception: a bespoke aged-paper map cutscene with its own fonts (Cinzel, IM Fell English SC, Special Elite), loaded only on that page.
+- Keep it fast on mobile, keep tap targets comfortable, and avoid low-contrast or tiny text.
 
-## TECH STACK PREFERENCES
+## Stack
 
-Default to:
+- React 19 + Vite 7, Tailwind CSS 3.
+- `three` for the ColorBends shader only.
+- No router library: `src/lib/router.js` is a tiny History API router.
+- Deployed to GitHub Pages by `.github/workflows/deploy.yml` on every push to `main`.
+The custom domain comes from `public/CNAME`.
 
-- **Framework:** React with Vite
-- **Styling:** Tailwind CSS (preferred) OR modern, well-structured vanilla CSS with Flexbox + Grid
-- **Structure:**
-  - `src/components` for reusable components
-  - `src/sections` for page sections (Hero, About, Projects, Contact, etc.)
-  - `src/assets` for images/icons
+## Routes
 
+All routes are defined in `src/lib/routes.js`, which has no React imports so the build script can use it too.
 
----
+| Path | Page |
+| --- | --- |
+| `/` | Home |
+| `/about`, `/contact` | Home with that panel open |
+| `/posts` | Categories (`cs`, `travel`, and a disabled `???`) |
+| `/posts/:category` | List of posts, newest first |
+| `/posts/:category/:slug` | A single post |
+| anything else | Not-found page |
 
-## DESIGN & STYLE
+Use the `Link` component (`src/components/Link.jsx`) for internal links and `navigate()` for programmatic navigation.
+Never use `window.location` for internal navigation.
 
-- Overall vibe: **modern, minimal, slightly playful**, not corporate-bland.
-- Use:
-  - Clear **visual hierarchy** (big hero, bold headings, readable body text).
-  - **Strong typography** and whitespace.
-  - A **cohesive color palette** (e.g. deep background, accent color, and soft neutral).
-  - Subtle **hover states** and **micro-animations** (e.g. transitions on buttons, cards, links).
-- Avoid:
-  - Overly heavy animations that hurt mobile performance.
-  - Super tiny fonts or low-contrast text.
+`npm run build` runs `scripts/prerender-routes.mjs` afterwards, which writes an `index.html` (with the right `<title>`) for every known route into `dist/`.
+That is what makes deep links return 200 on GitHub Pages.
+Unknown paths fall through to `404.html`, which boots the same app and shows the not-found page.
+Because routes are nested, Vite's `base` must stay `'/'`.
 
----
+## Layout
 
-## CONTENT SECTIONS
+```
+src/
+  App.jsx              route switch, page title, <html> background
+  lib/router.js        usePath() + navigate()
+  lib/routes.js        route table, slugs, allPaths() for prerendering
+  pages/               one component per route
+  components/          Link, AsciiBlackHole, ColorBends, europe/ (cutscene parts)
+  data/projects.js     cs posts (currently empty)
+  data/travel.js       travel posts
+  data/europe2026.js   Europe cutscene content: places, blurbs, photos, itinerary
+  data/europeMap.js    generated map geometry - do not edit by hand
+  lib/europe*.js, projection.js, landmass.js   cutscene camera and geometry
+scripts/
+  prerender-routes.mjs   postbuild route shells
+  build-europe-map.mjs   regenerates data/europeMap.js (npm run map:build, run by hand)
+public/
+  images/europe2026/   trip photos (see the README there)
+```
 
-Create these sections/components by default:
+## Content
 
-1. **Navbar**
-   - Sticky or on-scroll reveal.
-   - Links that scroll to sections (Hero, About, Projects, Skills, Contact).
+- **Posts** live in `src/data/projects.js` (cs) and `src/data/travel.js`.
+The header comment in each file documents the fields.
+A post's URL slug defaults to its title, lowercased and hyphenated, and can be overridden with `slug`.
+- **Custom post pages:** a post with a `view` field renders a bespoke lazy-loaded component registered in `customViews` in `src/App.jsx` instead of the generic `PostPage`.
+Only `europe2026` exists today.
+- **About and contact** panel content lives in `src/pages/HomePage.jsx`.
+To add a panel, add its key to `panels` in `src/lib/routes.js` and its content to `panelContent`.
+- **Europe 2026** content is edited in `src/data/europe2026.js` only; everything else in the cutscene derives from it.
 
-2. **Hero**
-   - Name: **“Axel VandenHeuvel”**
-   - Short tagline, e.g. _“CS student, builder, and curious problem solver.”_
-   - A brief one-sentence description.
-   - CTA buttons:
-     - “View Projects”
-     - “Download Resume” (placeholder link)
+## Performance
 
-3. **About**
-   - Short bio (student at University of Colorado Boulder, interested in software, security, and creative projects).
-   - A few bullet points that highlight strengths (problem solving, learning fast, collaboration).
+- `CategoriesPage` (three.js) and `Europe2026Page` are lazy-loaded so they stay out of the homepage bundle.
+Keep heavy dependencies behind `lazy()`.
+- The Europe cutscene's scroll loop mutates the DOM through refs inside `requestAnimationFrame` and never calls `setState` per frame.
+Preserve that when editing it.
 
-4. **Projects**
-   - Responsive grid of project cards.
-   - Each card has: Title, short description, tech stack tags, and buttons for “GitHub” and “Demo” (placeholder links).
-   - Cards should be nice on mobile (stacked) and grid-based on desktop.
+## Commands
 
-5. **Skills**
-   - Group skills by category (Languages, Frameworks, Tools).
-   - Use chips/pills or simple lists.
+```
+npm run dev        local dev server
+npm run build      production build + route prerender
+npm run preview    serve dist/
+npm run lint       eslint
+npm run map:build  regenerate the Europe map data (network, run by hand)
+```
 
-6. **Contact**
-   - Short inviting message.
-   - Links/icons for email, GitHub, LinkedIn (placeholder URLs).
-   - Optionally a simple contact form (no backend by default, just front-end validation/styling).
-
-7. **Footer**
-   - Small, unobtrusive footer with name and year.
-
----
-
-## RESPONSIVENESS REQUIREMENTS
-
-- Use a **mobile-first** layout:
-  - Single column on small screens.
-  - Break into 2–3 columns where appropriate on larger screens.
-- Ensure:
-  - Navbar works nicely on mobile (hamburger menu or a very compact layout).
-  - Text is readable on phones (sensible font sizes, line heights).
-  - Tap targets (buttons, links) are big enough.
-
----
-
-## OUTPUT EXPECTATIONS
-
-When generating code:
-
-- Show the **file path** before each code block, e.g.:
-
-  `src/main.jsx`
-  ```jsx
-  // code here
-
+`npm run lint` and `npm run build` must both pass cleanly before committing.

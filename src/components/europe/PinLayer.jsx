@@ -90,7 +90,7 @@ export const PinLayer = forwardRef(function PinLayer(
             ref={(el) => (pinRefs.current[i] = el)}
             type="button"
             onClick={() => onSelect(i)}
-            aria-label={`${stop.name}, ${stop.country} — stop ${stop.destIndex + 1} of ${destinations.length}`}
+            aria-label={`${stop.name}, ${stop.country} - stop ${stop.destIndex + 1} of ${destinations.length}`}
             className="eu-pin absolute left-0 top-0 inline-flex cursor-pointer items-center gap-2 whitespace-nowrap rounded-full pr-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
             style={box}
           >

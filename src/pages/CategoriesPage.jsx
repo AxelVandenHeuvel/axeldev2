@@ -1,4 +1,5 @@
 import ColorBends from '../components/ColorBends'
+import { Link } from '../components/Link'
 
 const categories = [
   { key: 'cs', label: 'cs' },
@@ -6,7 +7,7 @@ const categories = [
   { key: 'placeholder', label: '???', disabled: true },
 ]
 
-export function CategoriesPage({ onBack, onSelect }) {
+export function CategoriesPage() {
   return (
     <div className="relative min-h-screen overflow-auto">
       <div className="fixed inset-0 bg-[#050914]" style={{ transform: 'translateZ(0)' }}>
@@ -28,27 +29,28 @@ export function CategoriesPage({ onBack, onSelect }) {
       </div>
 
       <div className="relative z-10 px-6 py-8 max-w-2xl mx-auto">
-        <button
-          onClick={onBack}
-          className="text-sm text-slate-400 hover:text-white font-mono block transition-colors mb-4"
+        <Link
+          to="/"
+          className="text-sm text-slate-400 hover:text-white font-mono block w-fit transition-colors mb-4"
         >
           ← back
-        </button>
+        </Link>
 
         <div>
           {categories.map((cat, i) => (
             <div key={cat.key}>
-              <button
-                onClick={() => !cat.disabled && onSelect?.(cat.key)}
-                disabled={cat.disabled}
-                className={`w-full py-6 font-mono text-left transition-colors ${
-                  cat.disabled
-                    ? 'text-slate-600 cursor-default'
-                    : 'text-white hover:text-slate-300 cursor-pointer'
-                }`}
-              >
-                <span className="text-lg">{cat.label}</span>
-              </button>
+              {cat.disabled ? (
+                <span className="block py-6 font-mono text-lg text-slate-600 cursor-default">
+                  {cat.label}
+                </span>
+              ) : (
+                <Link
+                  to={`/posts/${cat.key}`}
+                  className="block py-6 font-mono text-lg text-white hover:text-slate-300 transition-colors"
+                >
+                  {cat.label}
+                </Link>
+              )}
               {i < categories.length - 1 && (
                 <div className="border-t border-white/10" />
               )}

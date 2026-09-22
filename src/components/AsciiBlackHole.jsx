@@ -26,7 +26,7 @@ export function AsciiBlackHole({ onEnter }) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 flex items-center justify-center overflow-hidden min-h-0 pt-4 relative"
+      className="flex-1 flex items-center justify-center overflow-hidden min-h-0 pt-4 relative outline-none focus-visible:ring-1 focus-visible:ring-neutral-800/40 rounded-sm"
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setGlow(0)}
       onClick={(e) => {
@@ -36,6 +36,15 @@ export function AsciiBlackHole({ onEnter }) {
         const dist = Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - cy) ** 2)
         if (dist <= 250 && onEnter) onEnter()
       }}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && onEnter) {
+          e.preventDefault()
+          onEnter()
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      aria-label="enter posts"
       style={{ cursor: glow > 0 ? 'pointer' : 'default' }}
     >
       <div

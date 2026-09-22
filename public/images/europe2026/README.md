@@ -6,7 +6,7 @@ matching place.
 ## Naming
 
 `<slug>-01.jpg`, `<slug>-02.jpg`, … where `<slug>` is the key in the `places`
-object — e.g. `vienna-01.jpg`, `bovec-01.jpg`, `zdiar-01.jpg`.
+object - e.g. `vienna-01.jpg`, `bovec-01.jpg`, `zdiar-01.jpg`.
 
 ## Wiring them up
 
@@ -22,7 +22,7 @@ vienna: {
 },
 ```
 
-The page works fine with `photos: []` — the journal shows placeholder cards
+The page works fine with `photos: []` - the journal shows placeholder cards
 rather than a broken grid, so these can be added a city at a time.
 
 ## Before committing

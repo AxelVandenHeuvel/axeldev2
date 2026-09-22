@@ -1,6 +1,7 @@
 import { forwardRef, useState } from 'react'
 
 import { destinations } from '../../lib/europeRoute.js'
+import { Link } from '../Link.jsx'
 import { PAPER } from './paper.js'
 
 /**
@@ -12,7 +13,7 @@ import { PAPER } from './paper.js'
  */
 
 export const ChapterHud = forwardRef(function ChapterHud(
-  { onBack, onJump, onOpen, onToggleStatic, isStatic, chapterRef, counterRef, railRef },
+  { backTo, onJump, onOpen, onToggleStatic, isStatic, chapterRef, counterRef, railRef },
   ref
 ) {
   const [indexOpen, setIndexOpen] = useState(false)
@@ -20,14 +21,13 @@ export const ChapterHud = forwardRef(function ChapterHud(
   return (
     <div ref={ref} className="pointer-events-none absolute inset-0 z-30">
       <div className="pointer-events-auto absolute left-4 top-4 flex items-center gap-4 sm:left-6 sm:top-6">
-        <button
-          type="button"
-          onClick={onBack}
+        <Link
+          to={backTo}
           className="font-mono text-xs transition-opacity hover:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a8322a]"
           style={{ color: PAPER.inkBody }}
         >
           ← back
-        </button>
+        </Link>
       </div>
 
       <div className="pointer-events-auto absolute right-4 top-4 flex items-center gap-3 sm:right-6 sm:top-6">
