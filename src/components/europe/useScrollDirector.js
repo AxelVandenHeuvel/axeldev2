@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 /**
  * Drives the cutscene from document scroll.
@@ -147,21 +147,4 @@ export function useStageSize(ref, onResize) {
       window.removeEventListener('orientationchange', maybe)
     }
   }, [ref])
-}
-
-/** Live prefers-reduced-motion, so toggling it in devtools takes effect immediately. */
-export function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(
-    () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-  )
-
-  useEffect(() => {
-    const mq = window.matchMedia?.('(prefers-reduced-motion: reduce)')
-    if (!mq) return
-    const handler = (e) => setReduced(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-
-  return reduced
 }

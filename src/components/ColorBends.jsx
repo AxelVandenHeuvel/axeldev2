@@ -126,6 +126,9 @@ export default function ColorBends({
   const pointerTargetRef = useRef(new THREE.Vector2(0, 0));
   const pointerCurrentRef = useRef(new THREE.Vector2(0, 0));
   const pointerSmoothRef = useRef(8);
+  // Intensity and mouse influence ease toward these instead of jumping, so
+  // callers can change them on hover without a visible snap.
+  const easedTargetRef = useRef(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -140,19 +143,19 @@ export default function ColorBends({
       uniforms: {
         uCanvas: { value: new THREE.Vector2(1, 1) },
         uTime: { value: 0 },
-        uSpeed: { value: speed },
+        uSpeed: { value: 0 },
         uRot: { value: new THREE.Vector2(1, 0) },
         uColorCount: { value: 0 },
         uColors: { value: uColorsArray },
-        uTransparent: { value: transparent ? 1 : 0 },
-        uScale: { value: scale },
-        uFrequency: { value: frequency },
-        uWarpStrength: { value: warpStrength },
+        uTransparent: { value: 1 },
+        uScale: { value: 1 },
+        uFrequency: { value: 1 },
+        uWarpStrength: { value: 1 },
         uPointer: { value: new THREE.Vector2(0, 0) },
-        uMouseInfluence: { value: mouseInfluence },
-        uParallax: { value: parallax },
-        uNoise: { value: noise },
-        uIntensity: { value: intensity }
+        uMouseInfluence: { value: 0 },
+        uParallax: { value: 0 },
+        uNoise: { value: 0 },
+        uIntensity: { value: 0 }
       },
       premultipliedAlpha: true,
       transparent: true
@@ -170,7 +173,6 @@ export default function ColorBends({
     rendererRef.current = renderer;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.setClearColor(0x000000, transparent ? 0 : 1);
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
     renderer.domElement.style.display = 'block';
@@ -211,6 +213,14 @@ export default function ColorBends({
       const amt = Math.min(1, dt * pointerSmoothRef.current);
       cur.lerp(tgt, amt);
       material.uniforms.uPointer.value.copy(cur);
+
+      const eased = easedTargetRef.current;
+      if (eased) {
+        const k = Math.min(1, dt * 4);
+        const u = material.uniforms;
+        u.uIntensity.value += (eased.intensity - u.uIntensity.value) * k;
+        u.uMouseInfluence.value += (eased.mouseInfluence - u.uMouseInfluence.value) * k;
+      }
       renderer.render(scene, camera);
       rafRef.current = requestAnimationFrame(loop);
     };
@@ -227,7 +237,9 @@ export default function ColorBends({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [frequency, mouseInfluence, noise, parallax, scale, speed, transparent, warpStrength, intensity]);
+    // Created once; prop changes are applied to the uniforms by the effect
+    // below. Rebuilding the renderer per change would drop the WebGL context.
+  }, []);
 
   useEffect(() => {
     const material = materialRef.current;
@@ -240,10 +252,13 @@ export default function ColorBends({
     material.uniforms.uScale.value = scale;
     material.uniforms.uFrequency.value = frequency;
     material.uniforms.uWarpStrength.value = warpStrength;
-    material.uniforms.uMouseInfluence.value = mouseInfluence;
     material.uniforms.uParallax.value = parallax;
     material.uniforms.uNoise.value = noise;
-    material.uniforms.uIntensity.value = intensity;
+    if (!easedTargetRef.current) {
+      material.uniforms.uIntensity.value = intensity;
+      material.uniforms.uMouseInfluence.value = mouseInfluence;
+    }
+    easedTargetRef.current = { intensity, mouseInfluence };
 
     const toVec3 = hex => {
       if (!hex || typeof hex !== 'string') {
@@ -296,6 +311,8 @@ export default function ColorBends({
     const container = containerRef.current;
     if (!material || !container) return;
 
+    // On window, not the container: page content sits above the canvas and
+    // would otherwise swallow every pointer event.
     const handlePointerMove = e => {
       const rect = container.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / (rect.width || 1)) * 2 - 1;
@@ -303,9 +320,9 @@ export default function ColorBends({
       pointerTargetRef.current.set(x, y);
     };
 
-    container.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointermove', handlePointerMove);
     return () => {
-      container.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointermove', handlePointerMove);
     };
   }, []);
 

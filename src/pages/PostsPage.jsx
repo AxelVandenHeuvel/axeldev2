@@ -1,18 +1,11 @@
 import { useMemo } from 'react'
 
 import { Link } from '../components/Link'
+import { newestFirst } from '../lib/dates'
 import { postPath } from '../lib/routes'
 
-function parseDate(d) {
-  const [m, day, y] = d.split('/')
-  return new Date(`20${y}`, parseInt(m) - 1, parseInt(day))
-}
-
 export function PostsPage({ category, title, posts }) {
-  const sorted = useMemo(() =>
-    [...posts].sort((a, b) => parseDate(b.date) - parseDate(a.date)),
-    [posts]
-  )
+  const sorted = useMemo(() => newestFirst(posts), [posts])
 
   return (
     <div className="relative min-h-screen overflow-auto bg-[#050914]">

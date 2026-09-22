@@ -6,15 +6,12 @@ import { MapStage } from '../components/europe/MapStage.jsx'
 import { PinLayer } from '../components/europe/PinLayer.jsx'
 import { glyphFlip, setMarkerGlyph } from '../components/europe/glyphs.js'
 import { StaticRouteMap } from '../components/europe/StaticRouteMap.jsx'
-import {
-  usePrefersReducedMotion,
-  useScrollDirector,
-  useStageSize,
-} from '../components/europe/useScrollDirector.js'
+import { useScrollDirector, useStageSize } from '../components/europe/useScrollDirector.js'
 import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE, VIGNETTE } from '../components/europe/paper.js'
 import { buildTimeline, progressForStop, sampleTimeline } from '../lib/europeCamera.js'
 import { destinations, legs, stops } from '../lib/europeRoute.js'
 import { meta } from '../data/europe2026.js'
+import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion.js'
 
 import '../components/europe/europe.css'
 

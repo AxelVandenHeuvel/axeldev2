@@ -18,48 +18,38 @@ const panelContent = {
   },
 }
 
-// FIGlet "Pagga". Regenerate with: npx figlet -f Pagga "AXEL"
+// FIGlet "Slant". Regenerate with: npx figlet -f Slant "AXEL"
 const FIRST_NAME = [
-  '░█▀█░█░█░█▀▀░█░░',
-  '░█▀█░▄▀▄░█▀▀░█░░',
-  '░▀░▀░▀░▀░▀▀▀░▀▀▀',
+  '    ___   _  __ ________',
+  '   /   | | |/ // ____/ /',
+  '  / /| | |   // __/ / /',
+  ' / ___ |/   |/ /___/ /___',
+  '/_/  |_/_/|_/_____/_____/',
 ]
 
 const LAST_NAME = [
-  '░█░█░█▀█░█▀█░█▀▄░█▀▀░█▀█░█░█░█▀▀░█░█░█░█░█▀▀░█░░',
-  '░▀▄▀░█▀█░█░█░█░█░█▀▀░█░█░█▀█░█▀▀░█░█░▀▄▀░█▀▀░█░░',
-  '░░▀░░▀░▀░▀░▀░▀▀░░▀▀▀░▀░▀░▀░▀░▀▀▀░▀▀▀░░▀░░▀▀▀░▀▀▀',
+  ' _    _____    _   ______  _______   ____  __________  ___    __________',
+  '| |  / /   |  / | / / __ \\/ ____/ | / / / / / ____/ / / / |  / / ____/ /',
+  '| | / / /| | /  |/ / / / / __/ /  |/ / /_/ / __/ / / / /| | / / __/ / /',
+  '| |/ / ___ |/ /|  / /_/ / /___/ /|  / __  / /___/ /_/ / | |/ / /___/ /___',
+  '|___/_/  |_/_/ |_/_____/_____/_/ |_/_/ /_/_____/\\____/  |___/_____/_____/',
 ]
 
 /**
- * Sized from the viewport so the 48-column last name always fits inside the
- * 1.5rem gutters (a monospace cell is ~0.6em, so 48 columns is ~29em), capped
- * at 16px on wide screens. Both names share the size so they read as a pair.
+ * Sized from the viewport so the 73-column last name always fits inside the
+ * 1.5rem gutters (a monospace cell is ~0.6em, so 73 columns is ~44em), capped
+ * at 15px on wide screens. Both names share the size so they read as a pair.
  */
-const NAME_FONT_SIZE = 'clamp(8px, calc((100vw - 3rem) / 29.5), 16px)'
+const NAME_FONT_SIZE = 'clamp(6px, calc((100vw - 3rem) / 44), 15px)'
 
-/**
- * Block-letter text in a muted ember that echoes the black hole's glow; the
- * ░ field is drawn faint so the letters carry the weight.
- */
-function BlockText({ lines }) {
+function NameArt({ lines }) {
   return (
     <pre
       aria-hidden="true"
-      className="text-[#c07a4e] leading-none font-mono select-none mx-auto w-fit"
+      className="text-neutral-800 leading-tight font-mono select-none mx-auto w-fit"
       style={{ fontSize: NAME_FONT_SIZE }}
     >
-      {lines.map((line, i) => (
-        <span key={i} className="block">
-          {line.split(/(░+)/).map((run, j) =>
-            run.startsWith('░') ? (
-              <span key={j} className="text-[#c07a4e]/15">{run}</span>
-            ) : (
-              run
-            )
-          )}
-        </span>
-      ))}
+      {lines.join('\n')}
     </pre>
   )
 }
@@ -134,11 +124,11 @@ export function HomePage({ panel }) {
       )}
 
       <h1 className="sr-only">Axel VandenHeuvel</h1>
-      <BlockText lines={FIRST_NAME} />
+      <NameArt lines={FIRST_NAME} />
 
       <AsciiBlackHole onEnter={() => navigate('/posts')} />
 
-      <BlockText lines={LAST_NAME} />
+      <NameArt lines={LAST_NAME} />
     </main>
   )
 }

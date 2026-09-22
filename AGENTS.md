@@ -14,7 +14,8 @@ It is not a conventional portfolio with a hero, skills grid, or contact form, an
 - **Home** is a cream (`#f2ebe0`) screen with the name in ASCII letters and an animated ASCII black hole in the middle.
 Clicking or pressing Enter on the black hole enters the site.
 - **Inner pages** are night (`#050914`) with light monospace text.
-The categories page has an animated three.js `ColorBends` shader behind it.
+The categories page has an animated three.js `ColorBends` shader behind it, with the category names in the same Slant ASCII font as the home page name.
+Hovering a category brightens the shader and bends it toward the cursor.
 - **Europe 2026** is the exception: a bespoke aged-paper map cutscene with its own fonts (Cinzel, IM Fell English SC, Special Elite), loaded only on that page.
 - Keep it fast on mobile, keep tap targets comfortable, and avoid low-contrast or tiny text.
 
@@ -54,8 +55,10 @@ src/
   App.jsx              route switch, page title, <html> background
   lib/router.js        usePath() + navigate()
   lib/routes.js        route table, slugs, allPaths() for prerendering
+  lib/dates.js         MM/DD/YY post date parsing and sorting
+  lib/usePrefersReducedMotion.js   shared reduced-motion hook
   pages/               one component per route
-  components/          Link, AsciiBlackHole, ColorBends, europe/ (cutscene parts)
+  components/          Link, AsciiBlackHole, ColorBends, GlitchArt, europe/ (cutscene parts)
   data/projects.js     cs posts (currently empty)
   data/travel.js       travel posts
   data/europe2026.js   Europe cutscene content: places, blurbs, photos, itinerary
