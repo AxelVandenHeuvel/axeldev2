@@ -13,6 +13,7 @@ It is not a conventional portfolio with a hero, skills grid, or contact form, an
 
 - **Home** is a cream (`#f2ebe0`) screen with the name in ASCII letters and an animated ASCII black hole in the middle.
 Clicking or pressing Enter on the black hole enters the site.
+Three unnamed colour schemes (classic cream, GMK Vaporwave, GMK Night Runner) are picked from the "theme" item in the nav, shown as plain geometric symbols; they live in `src/lib/homeTheme.js` as CSS variables and the choice is remembered in the browser.
 - **Inner pages** are night (`#050914`) with light monospace text.
 The categories page has an animated three.js `ColorBends` shader behind it, with the category names in the same Slant ASCII font as the home page name.
 Hovering a category brightens the shader and bends it toward the cursor.
@@ -55,6 +56,7 @@ src/
   App.jsx              route switch, page title, <html> background
   lib/router.js        usePath() + navigate()
   lib/routes.js        route table, slugs, allPaths() for prerendering
+  lib/homeTheme.js     home page colour schemes + useHomeTheme()
   lib/dates.js         MM/DD/YY post date parsing and sorting
   lib/usePrefersReducedMotion.js   shared reduced-motion hook
   pages/               one component per route

@@ -26,7 +26,7 @@ export function AsciiBlackHole({ onEnter }) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 flex items-center justify-center overflow-hidden min-h-0 pt-4 relative outline-none focus-visible:ring-1 focus-visible:ring-neutral-800/40 rounded-sm"
+      className="flex-1 flex items-center justify-center overflow-hidden min-h-0 pt-4 relative outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--home-ink)] rounded-sm"
       onMouseMove={handleMouseMove}
       onMouseLeave={() => setGlow(0)}
       onClick={(e) => {
@@ -48,14 +48,14 @@ export function AsciiBlackHole({ onEnter }) {
       style={{ cursor: glow > 0 ? 'pointer' : 'default' }}
     >
       <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl pointer-events-none transition-opacity duration-200"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl pointer-events-none bg-[color:var(--home-glow)] transition-[background-color] duration-500"
         style={{
           width: `${140 + glow * 60}px`,
           height: `${140 + glow * 60}px`,
-          backgroundColor: `rgba(249, 115, 22, ${0.4 + glow * 0.4})`,
+          opacity: 0.4 + glow * 0.4,
         }}
       />
-      <pre className="text-neutral-800 text-[3.5px] sm:text-[4.5px] md:text-[6px] leading-[1] font-mono select-none w-fit relative">
+      <pre className="text-[color:var(--home-hole)] transition-colors duration-500 text-[3.5px] sm:text-[4.5px] md:text-[6px] leading-[1] font-mono select-none w-fit relative">
         {frames[frameIndex].join('\n')}
       </pre>
     </div>

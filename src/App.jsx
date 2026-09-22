@@ -4,6 +4,7 @@ import { HomePage } from './pages/HomePage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PostPage } from './pages/PostPage'
 import { PostsPage } from './pages/PostsPage'
+import { homeThemes, useHomeTheme } from './lib/homeTheme'
 import { usePath } from './lib/router'
 import { resolveRoute } from './lib/routes'
 
@@ -25,8 +26,9 @@ const CREAM = '#f2ebe0'
 const NIGHT = '#050914'
 
 /** Matched on <html> so overscroll and lazy-load gaps never flash the wrong color. */
-function backgroundFor(route) {
-  if (route.name === 'home' || route.name === 'notFound') return CREAM
+function backgroundFor(route, homeTheme) {
+  if (route.name === 'home') return homeThemes[homeTheme].vars['--home-bg']
+  if (route.name === 'notFound') return CREAM
   return customViews[route.post?.view]?.background ?? NIGHT
 }
 
@@ -34,7 +36,8 @@ function App() {
   const path = usePath()
   const route = resolveRoute(path)
 
-  const background = backgroundFor(route)
+  const homeTheme = useHomeTheme()
+  const background = backgroundFor(route, homeTheme)
 
   useEffect(() => {
     document.title = route.title
