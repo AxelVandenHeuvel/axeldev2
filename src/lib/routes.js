@@ -12,7 +12,7 @@ import { travel } from '../data/travel.js'
  *   /posts/:category/:slug   a single post
  */
 
-export const SITE_NAME = 'Axel VandenHeuvel'
+const SITE_NAME = 'Axel VandenHeuvel'
 
 export const panels = ['about', 'contact']
 
@@ -21,7 +21,7 @@ export const categories = {
   travel: { title: 'travel', posts: travel },
 }
 
-export function slugify(text) {
+function slugify(text) {
   return text
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -29,7 +29,7 @@ export function slugify(text) {
 }
 
 /** A post may set `slug` explicitly; otherwise it is derived from the title. */
-export function postSlug(post) {
+function postSlug(post) {
   return post.slug ?? slugify(post.title)
 }
 

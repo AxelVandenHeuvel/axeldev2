@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import ColorBends from '../components/ColorBends'
+import { ColorBends } from '../components/ColorBends'
 import { GlitchArt } from '../components/GlitchArt'
 import { Link } from '../components/Link'
 import { categories } from '../lib/routes'
@@ -36,6 +36,8 @@ const titles = {
 const TITLE_STYLE = { fontSize: 'clamp(10px, calc((100vw - 3rem) / 18.7), 22px)' }
 const TITLE_CLASS = 'font-mono leading-tight select-none w-fit'
 
+const BEND_COLORS = ['#FF0066', '#00FF88', '#0066FF']
+
 export function CategoriesPage() {
   // Which entry is hovered or focused; the background leans in while set.
   const [active, setActive] = useState(null)
@@ -51,7 +53,7 @@ export function CategoriesPage() {
       <div className="fixed inset-0 bg-[#050914]" style={{ transform: 'translateZ(0)' }}>
         <ColorBends
           className="absolute inset-0"
-          colors={["#FF0066", "#00FF88", "#0066FF"]}
+          colors={BEND_COLORS}
           rotation={0}
           autoRotate={0}
           speed={0.2}

@@ -26,11 +26,6 @@ export function project(lon, lat) {
   return [R * lon * D, -R * Math.log(Math.tan(Math.PI / 4 + phi / 2))]
 }
 
-/** [x, y] world units -> lon/lat in degrees. */
-export function unproject(x, y) {
-  return [x / R / D, (2 * Math.atan(Math.exp(-y / R)) - Math.PI / 2) / D]
-}
-
 /**
  * Samples the great-circle path between two points as lon/lat pairs.
  *

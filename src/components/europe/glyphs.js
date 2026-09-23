@@ -7,7 +7,7 @@
  * overlay at fixed screen size, so they never scale with the 22x camera zoom.
  */
 
-export const PLANE =
+const PLANE =
   'M11 0 L3 2.2 L-1.5 2.2 L-6 9 L-8.5 9 L-6.5 2.2 L-9.5 2.2 L-11 4.5 ' +
   'L-12 4.5 L-11 0 L-12 -4.5 L-11 -4.5 L-9.5 -2.2 L-6.5 -2.2 ' +
   'L-8.5 -9 L-6 -9 L-1.5 -2.2 L3 -2.2 Z'
@@ -19,11 +19,11 @@ export const PLANE =
  * sloped nose down to the cowcatcher. The chimney and the tall cab are what
  * make it read as a train rather than a generic box at 30px.
  */
-export const TRAIN =
+const TRAIN =
   'M-11.5 4 L-11.5 -7 L-3.5 -7 L-3.5 -2.5 L2 -2.5 L2 -7 L5 -7 L5 -2.5 ' +
   'L6.5 -2.5 L6.5 1 L10 1 L11 4 Z'
 
-export const BUS = 'M-9.5 3.5 L-9.5 -4 Q-9.5 -5.5 -8 -5.5 L8 -5.5 Q9.5 -5.5 9.5 -4 L9.5 3.5 Z'
+const BUS = 'M-9.5 3.5 L-9.5 -4 Q-9.5 -5.5 -8 -5.5 L8 -5.5 Q9.5 -5.5 9.5 -4 L9.5 3.5 Z'
 
 /**
  * Windows, knocked out in paper colour.
@@ -31,7 +31,7 @@ export const BUS = 'M-9.5 3.5 L-9.5 -4 Q-9.5 -5.5 -8 -5.5 L8 -5.5 Q9.5 -5.5 9.5 
  * Without these both vehicles read as a solid dark block at 30px. They're what
  * makes the shape legible as a vehicle rather than a smudge.
  */
-export const DETAIL = {
+const DETAIL = {
   plane: [],
   train: [{ x: -9.5, y: -5, w: 4.5, h: 3.4 }],
   bus: [
@@ -48,7 +48,7 @@ export const DETAIL = {
  * Kept separate from the body path so the body can be filled solid while the
  * wheels stay legible against it.
  */
-export const WHEELS = {
+const WHEELS = {
   plane: [],
   // Big driver up front, smaller carrying wheels behind -- reads as a loco.
   train: [

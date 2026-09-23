@@ -1,5 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
 import frames from '../blackhole-frames.json'
+
+const FRAME_MS = 100
+/** Cursor distance (px) from the center within which the hole reacts. */
+const REACH = 250
 
 export function AsciiBlackHole({ onEnter }) {
   const [frameIndex, setFrameIndex] = useState(0)
@@ -9,35 +14,24 @@ export function AsciiBlackHole({ onEnter }) {
   useEffect(() => {
     const interval = setInterval(() => {
       setFrameIndex((prev) => (prev + 1) % frames.length)
-    }, 100)
+    }, FRAME_MS)
     return () => clearInterval(interval)
   }, [])
 
-  const handleMouseMove = (e) => {
+  const distanceFromCenter = (e) => {
     const rect = containerRef.current.getBoundingClientRect()
-    const cx = rect.left + rect.width / 2
-    const cy = rect.top + rect.height / 2
-    const dist = Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - cy) ** 2)
-    const maxDist = 250
-    const intensity = Math.max(0, 1 - dist / maxDist)
-    setGlow(intensity)
+    return Math.hypot(e.clientX - (rect.left + rect.width / 2), e.clientY - (rect.top + rect.height / 2))
   }
 
   return (
     <div
       ref={containerRef}
       className="flex-1 flex items-center justify-center overflow-hidden min-h-0 pt-4 relative outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--home-ink)] rounded-sm"
-      onMouseMove={handleMouseMove}
+      onMouseMove={(e) => setGlow(Math.max(0, 1 - distanceFromCenter(e) / REACH))}
       onMouseLeave={() => setGlow(0)}
-      onClick={(e) => {
-        const rect = containerRef.current.getBoundingClientRect()
-        const cx = rect.left + rect.width / 2
-        const cy = rect.top + rect.height / 2
-        const dist = Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - cy) ** 2)
-        if (dist <= 250 && onEnter) onEnter()
-      }}
+      onClick={(e) => distanceFromCenter(e) <= REACH && onEnter()}
       onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && onEnter) {
+        if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           onEnter()
         }
@@ -47,6 +41,7 @@ export function AsciiBlackHole({ onEnter }) {
       aria-label="enter posts"
       style={{ cursor: glow > 0 ? 'pointer' : 'default' }}
     >
+      {/* Opacity tracks the cursor instantly; only the theme color fades. */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl pointer-events-none bg-[color:var(--home-glow)] transition-[background-color] duration-500"
         style={{

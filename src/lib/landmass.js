@@ -75,7 +75,7 @@ function inRing(px, py, ring) {
   return inside
 }
 
-export function isOnLand(x, y) {
+function isOnLand(x, y) {
   if (!rings) rings = build()
   for (const ring of rings) {
     if (x < ring.minX || x > ring.maxX || y < ring.minY || y > ring.maxY) continue
