@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect } from 'react'
 
 import { AsciiBlackHole } from '../components/AsciiBlackHole'
 import { Link } from '../components/Link'
-import { homeThemes, setHomeTheme, useHomeTheme } from '../lib/homeTheme'
 import { navigate } from '../lib/router'
 import { panels } from '../lib/routes'
 
@@ -12,11 +11,24 @@ const panelContent = {
   },
   contact: {
     links: [
-      { label: 'Email', value: 'axelvandenhe@gmail.com', href: 'mailto:axelvandenhe@gmail.com' },
+      { label: 'Email', value: 'axelvandenhe[at]gmail.com', href: 'mailto:axelvandenhe@gmail.com' },
       { label: 'GitHub', value: 'AxelVandenHeuvel', href: 'https://github.com/AxelVandenHeuvel' },
       { label: 'LinkedIn', value: 'Axel VandenHeuvel', href: 'https://www.linkedin.com/in/axel-vandenheuvel/' },
     ],
   },
+}
+
+const HOME_COLORS = {
+  '--home-bg': '#f2ebe0',
+  '--home-ink': '#262626',
+  '--home-hole': '#262626',
+  '--home-glow': '#f97316',
+  '--home-panel': '#f2ebe0',
+  '--home-panel-edge': '#262626',
+  '--home-body': '#525252',
+  '--home-muted': '#a3a3a3',
+  '--home-rule': '#d4d4d4',
+  '--home-backdrop': 'rgba(0, 0, 0, 0.1)',
 }
 
 // FIGlet "Slant". Regenerate with: npx figlet -f Slant "AXEL"
@@ -55,82 +67,7 @@ function NameArt({ lines }) {
   )
 }
 
-const SYMBOL_PATHS = {
-  circle: <circle cx="6" cy="6" r="4.5" />,
-  triangle: <path d="M6 1.5 10.5 10H1.5Z" />,
-  square: <rect x="1.75" y="1.75" width="8.5" height="8.5" />,
-}
-
-/**
- * The "theme" nav item. Opens a row of unnamed schemes, each a bare
- * geometric symbol; the current one is filled. The row is positioned
- * absolutely so opening it never shifts the rest of the nav.
- */
-function ThemePicker({ theme }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onPointer = (e) => !ref.current?.contains(e.target) && setOpen(false)
-    const onKey = (e) => e.key === 'Escape' && setOpen(false)
-    document.addEventListener('pointerdown', onPointer)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('pointerdown', onPointer)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls="theme-options"
-        onClick={() => setOpen((v) => !v)}
-        className={`text-left hover:underline ${open ? 'underline' : ''}`}
-      >
-        theme
-      </button>
-      {open && (
-        <div
-          id="theme-options"
-          role="radiogroup"
-          aria-label="color theme"
-          className="absolute top-full mt-1 left-1/2 -translate-x-1/2 md:top-1/2 md:mt-0 md:left-full md:ml-3 md:translate-x-0 md:-translate-y-1/2 flex items-center gap-1"
-        >
-          {Object.entries(homeThemes).map(([key, { symbol }], i) => (
-            <button
-              key={key}
-              type="button"
-              role="radio"
-              aria-checked={theme === key}
-              aria-label={`color theme ${i + 1}`}
-              onClick={() => setHomeTheme(key)}
-              className="grid place-items-center h-7 w-7 rounded-sm outline-none transition-transform duration-200 hover:-translate-y-0.5 focus-visible:ring-1 focus-visible:ring-[color:var(--home-ink)]"
-            >
-              <svg
-                viewBox="0 0 12 12"
-                className="h-3 w-3"
-                fill={theme === key ? 'currentColor' : 'none'}
-                stroke="currentColor"
-                strokeWidth="1.25"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                {SYMBOL_PATHS[symbol]}
-              </svg>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export function HomePage({ panel }) {
-  const theme = useHomeTheme()
   const active = panel ? panelContent[panel] : null
   const close = () => navigate('/')
 
@@ -143,7 +80,7 @@ export function HomePage({ panel }) {
 
   return (
     <main
-      style={{ ...homeThemes[theme].vars }}
+      style={HOME_COLORS}
       className="h-dvh bg-[color:var(--home-bg)] text-[color:var(--home-ink)] transition-colors duration-500 flex flex-col justify-between px-6 pt-20 pb-8 md:py-8 overflow-hidden relative">
       <nav className="absolute left-1/2 -translate-x-1/2 top-4 flex flex-row gap-6 md:left-8 md:translate-x-0 md:top-1/2 md:-translate-y-1/2 md:flex-col md:items-start md:gap-4 items-center font-mono text-sm z-20">
         {panels.map((link) => (
@@ -156,7 +93,6 @@ export function HomePage({ panel }) {
             {link}
           </Link>
         ))}
-        <ThemePicker theme={theme} />
       </nav>
 
       {active && (
