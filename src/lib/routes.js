@@ -6,7 +6,7 @@ import { travel } from '../data/travel.js'
  * prerender script (scripts/prerender-routes.mjs) can import it in Node.
  *
  *   /                        home
- *   /about, /contact         home with that panel open
+ *   /about, /resume, /contact home with that panel open
  *   /posts                   categories
  *   /posts/:category         post list
  *   /posts/:category/:slug   a single post
@@ -14,7 +14,7 @@ import { travel } from '../data/travel.js'
 
 const SITE_NAME = 'Axel VandenHeuvel'
 
-export const panels = ['about', 'contact']
+export const panels = ['about', 'resume', 'contact']
 
 export const categories = {
   cs: { title: 'cs', posts: projects },

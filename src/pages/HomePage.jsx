@@ -5,9 +5,14 @@ import { Link } from '../components/Link'
 import { navigate } from '../lib/router'
 import { panels } from '../lib/routes'
 
+const RESUME_URL = '/resume/Axel_VandenHeuvel_SWE.pdf'
+
 const panelContent = {
   about: {
     content: `Education\n\nUniversity of Colorado Boulder\nB.S. Computer Science, 3.66 GPA`,
+  },
+  resume: {
+    document: RESUME_URL,
   },
   contact: {
     links: [
@@ -102,7 +107,7 @@ export function HomePage({ panel }) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="panel-title"
-            className="relative bg-[color:var(--home-panel)] shadow-lg w-full max-w-2xl max-h-[70vh] overflow-y-auto p-8 font-mono rounded-sm"
+            className={`relative bg-[color:var(--home-panel)] shadow-lg w-full ${active.document ? 'max-w-5xl h-[85vh]' : 'max-w-2xl max-h-[70vh]'} overflow-y-auto p-8 font-mono rounded-sm`}
           >
             <div className="absolute inset-2 md:inset-3 border border-[color:var(--home-panel-edge)] rounded-sm pointer-events-none" />
             <button
@@ -131,6 +136,28 @@ export function HomePage({ panel }) {
                       <span className="hover:underline break-all text-right">{link.value}</span>
                     </a>
                   ))}
+                </div>
+              )}
+              {active.document && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+                    <a
+                      href={active.document}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline"
+                    >
+                      open in new tab
+                    </a>
+                    <a href={active.document} download className="text-[color:var(--home-muted)] hover:text-[color:var(--home-ink)] hover:underline">
+                      download pdf
+                    </a>
+                  </div>
+                  <iframe
+                    src={`${active.document}#view=FitH`}
+                    title="Axel VandenHeuvel resume"
+                    className="w-full h-[calc(85vh-9rem)] min-h-96 border border-[color:var(--home-rule)] bg-white"
+                  />
                 </div>
               )}
             </div>
