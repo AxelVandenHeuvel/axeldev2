@@ -38,15 +38,18 @@ const NE = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/maste
 /** Fine layer: Europe. 50m, because Slovenia at 110m is an 18-point blob. */
 const FINE = {
   file: 'ne_50m_admin_0_countries.geojson',
-  bbox: [-33, 33, 46, 73], // [lonMin, latMin, lonMax, latMax]
+  // Deliberately much larger than any Europe camera shot. Clipping close to
+  // the itinerary exposes artificial ruler-straight polygon edges whenever a
+  // wide shot reaches the baked boundary.
+  bbox: [-45, 15, 75, 85], // [lonMin, latMin, lonMax, latMax]
   tolerance: 2, // world units; ~0.87km at 47N. Sets MIN_W in the camera.
   minRing: 10, // drop rings under this many points -- rocks and islets
 }
 
-/** Coarse layer: N. America + Greenland, only ever seen in the Atlantic opening. */
+/** Coarse layer: whole-world context for the Atlantic opening. */
 const COARSE = {
   file: 'ne_110m_admin_0_countries.geojson',
-  bbox: [-170, 20, -10, 75],
+  bbox: [-180, -60, 180, 85],
   tolerance: 20,
   minRing: 8,
 }

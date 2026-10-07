@@ -2,51 +2,28 @@
  * The camera timeline: maps scroll progress 0..1 to a viewBox and a route
  * draw position.
  *
- * THE ONE RULE: every phase is exactly one kind of motion.
- *
- *   dwell -- nothing moves
- *   zoom  -- scale changes, centre is pinned
- *   draw  -- centre pans, scale is pinned
- *
- * That constraint is what makes the movement read as orderly. Compound
- * motion -- panning while zooming while the line grows -- is what makes a
- * camera feel unsettled, and it's what the earlier versions of this file did.
- *
- * It falls out of one decision: THE CAMERA CENTRE IS ALWAYS THE VEHICLE.
- * Not a leg's midpoint, not a blend that ramps in and out -- just the vehicle.
- * Because a dwell happens while the vehicle is parked at a stop, and a leg
- * begins where the previous one ended, the centre is automatically continuous
- * everywhere, with no anchor arithmetic and no seams to reconcile.
- *
- * Scale is quantised to a ladder, so consecutive legs of similar size share a
- * level and the zoom phase between them disappears entirely rather than
- * becoming a pointless twitch.
- *
- * Zoom interpolates in LOG space. Perceived zoom rate is proportional to
- * dw/w, so constant perceived speed requires w to vary exponentially. Linear
- * interpolation across the Atlantic dive rips inward and then crawls.
+ * Draw phases are tracking shots. The scale is fixed for the whole leg while
+ * the camera follows the route head exactly. The moving line and its arrival
+ * destination therefore occupy the center of the screen at every frame.
  */
 
 import { MIN_W, legs, stops, truncateLeg } from './europeRoute.js'
 
 /**
- * Framing. The camera rides the vehicle, so a leg's far end sits a full span
- * away from centre at departure -- the frame has to be about twice the span
- * for the destination to be in view, where a centred-on-the-leg camera would
- * only have needed one.
+ * Tracking shots are intentionally much tighter than a complete-leg fit.
+ * The minimum keeps short mountain hops legible and leaves enough paper around
+ * the route head for the map to read as a map rather than a red line alone.
  */
-const FIT_SCALE = 2.0
-const FIT_PAD = 200
+const TRACK_MIN = MIN_W * 1.55
+const TRACK_MAX = 7200
+const TRACK_LENGTH_RATIO = 0.42
+const TRACK_PAD = 520
 
-/**
- * Scale ladder. Snapping each leg up to a discrete level means neighbouring
- * legs of similar size resolve to the SAME level, which lets the zoom phase
- * between them be dropped altogether.
- */
+/** Extra scroll weight for legs that cross multiple tracking-frame widths. */
+const TRACK_SCROLL_FACTOR = 1.25
+
+/** Keep the scale ladder so adjacent shots do not make tiny zoom corrections. */
 const ZOOM_RATIO = 1.35
-
-/** How far a hero stop punches in from the leg that arrived there. */
-const HERO_ZOOM = 0.55
 
 const DIVE_LEG = 2
 
@@ -57,77 +34,212 @@ function easeInOutCubic(t) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 }
 
-/** Gentler than cubic, so long legs don't crawl at the extremes. */
+/** Gentler than cubic, so long legs do not crawl at the extremes. */
 function easeInOutSine(t) {
   return -(Math.cos(Math.PI * t) - 1) / 2
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value))
+}
+
 function snapZoom(w) {
   if (w <= MIN_W) return MIN_W
-  // Nearest, not up. Rounding up costs a whole ladder step of extra altitude
-  // on the Atlantic crossing; rounding down by at most a few percent just
-  // means the destination slides into frame a moment after departure.
-  const steps = Math.round(Math.log(w / MIN_W) / Math.log(ZOOM_RATIO))
+  // Round up so the chosen shot never becomes narrower than its safety fit.
+  const steps = Math.ceil(Math.log(w / MIN_W) / Math.log(ZOOM_RATIO))
   return MIN_W * Math.pow(ZOOM_RATIO, Math.max(0, steps))
 }
 
-function fitLeg(leg, aspect) {
+function legBounds(leg) {
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
   let maxY = -Infinity
-  for (const seg of leg.segments) {
-    for (const [x, y] of seg.pts) {
-      if (x < minX) minX = x
-      if (x > maxX) maxX = x
-      if (y < minY) minY = y
-      if (y > maxY) maxY = y
+
+  for (const segment of leg.segments) {
+    for (const [x, y] of segment.pts) {
+      minX = Math.min(minX, x)
+      minY = Math.min(minY, y)
+      maxX = Math.max(maxX, x)
+      maxY = Math.max(maxY, y)
     }
   }
-  const spanX = (maxX - minX) * FIT_SCALE + FIT_PAD
-  const spanY = (maxY - minY) * FIT_SCALE + FIT_PAD
-  return Math.max(spanX, spanY * aspect, MIN_W)
+
+  return { minX, minY, maxX, maxY }
+}
+
+/** Returns one point on a leg at an arc-length distance from its origin. */
+function pointAtDistance(leg, distance) {
+  let remaining = clamp(distance, 0, leg.length)
+
+  for (const segment of leg.segments) {
+    if (remaining <= segment.length) {
+      const { pts, cum } = segment
+      let i = 1
+      while (i < cum.length - 1 && cum[i] < remaining) i++
+
+      const span = cum[i] - cum[i - 1]
+      const f = span > 0 ? (remaining - cum[i - 1]) / span : 0
+      const [ax, ay] = pts[i - 1]
+      const [bx, by] = pts[i]
+      return [ax + (bx - ax) * f, ay + (by - ay) * f]
+    }
+    remaining -= segment.length
+  }
+
+  return leg.segments[leg.segments.length - 1].pts.at(-1)
+}
+
+/**
+ * Computes a tracking centre for a route position. The route head is the
+ * centre. At t=1 this is also the destination, so there is no arrival pan.
+ */
+function trackingCenter(leg, t) {
+  const distance = leg.length * clamp(t, 0, 1)
+  const head = pointAtDistance(leg, distance)
+
+  return {
+    cx: head[0],
+    cy: head[1],
+  }
+}
+
+/**
+ * Builds a stable close-up width for a leg. Length supplies the tracking
+ * scale, while the route's cross-axis span prevents a bend from touching the
+ * edge of a wide viewport. The width never changes during the draw phase.
+ */
+function trackingWidth(leg, aspect) {
+  const { minY, maxY } = legBounds(leg)
+  const lengthFit = leg.length * TRACK_LENGTH_RATIO + TRACK_PAD
+  const crossAxisFit = (maxY - minY) * aspect * 1.28 + TRACK_PAD
+  return snapZoom(Math.min(TRACK_MAX, Math.max(TRACK_MIN, lengthFit, crossAxisFit)))
+}
+
+function buildFrame(leg, aspect) {
+  const w = trackingWidth(leg, aspect)
+  return {
+    w,
+    start: trackingCenter(leg, 0),
+    end: trackingCenter(leg, 1),
+  }
 }
 
 /**
  * Builds the phase list for a given aspect ratio.
  *
- * Rebuilt on resize rather than stored as viewBox strings -- a literal
- * viewBox doesn't survive a change of viewport shape.
+ * Rebuilt on resize rather than stored as viewBox strings because a literal
+ * viewBox does not survive a change of viewport shape.
  */
 export function buildTimeline(aspect) {
-  const legWidths = legs.map((leg) => snapZoom(fitLeg(leg, aspect)))
+  const frames = legs.map((leg) => buildFrame(leg, aspect))
+  const legWidths = frames.map((frame) => frame.w)
   const phases = []
 
   let currentW = null
+  let currentCenter = null
 
-  /** Emits a pure-zoom phase, or nothing at all if the scale already matches. */
-  const zoomTo = (target, stopIndex, legIndex, legT) => {
-    if (currentW !== null && Math.abs(target - currentW) < 1) return
-    if (currentW !== null) {
-      phases.push({
-        kind: 'zoom',
-        stopIndex,
-        legIndex,
-        legT,
-        w0: currentW,
-        w1: target,
-        weight: ZOOM_TIME,
-      })
+  const pushZoom = (w0, w1, from, to, stopIndex, legIndex, legT) => {
+    phases.push({
+      kind: 'zoom',
+      stopIndex,
+      legIndex,
+      legT,
+      w0,
+      w1,
+      cx0: from.cx,
+      cy0: from.cy,
+      cx1: to.cx,
+      cy1: to.cy,
+      weight: ZOOM_TIME,
+    })
+  }
+
+  /** Emits a parked transition to the next tracking shot. */
+  const zoomTo = (target, center, stopIndex, legIndex) => {
+    if (
+      currentW !== null &&
+      Math.abs(target - currentW) < 1 &&
+      Math.abs(center.cx - currentCenter.cx) < 1 &&
+      Math.abs(center.cy - currentCenter.cy) < 1
+    ) {
+      return
     }
+
+    if (currentW !== null) {
+      const dx = Math.abs(center.cx - currentCenter.cx)
+      const dy = Math.abs(center.cy - currentCenter.cy)
+      const left = Math.min(currentCenter.cx - currentW / 2, center.cx - target / 2)
+      const right = Math.max(currentCenter.cx + currentW / 2, center.cx + target / 2)
+      const top = Math.min(
+        currentCenter.cy - currentW / (2 * aspect),
+        center.cy - target / (2 * aspect)
+      )
+      const bottom = Math.max(
+        currentCenter.cy + currentW / (2 * aspect),
+        center.cy + target / (2 * aspect)
+      )
+
+      // Widen before a long pan so the paper never snaps out from under the
+      // camera during the parked transition. The draw phase returns to the
+      // target width before the route starts moving again.
+      const transitionW = snapZoom(
+        Math.max(
+          currentW,
+          target,
+          right - left + dx,
+          (bottom - top + dy) * aspect
+        ) * 1.12
+      )
+
+      if (Math.abs(transitionW - currentW) >= 1) {
+        const parkedLeg = Math.max(-1, legIndex - 1)
+        pushZoom(
+          currentW,
+          transitionW,
+          currentCenter,
+          currentCenter,
+          stopIndex,
+          parkedLeg,
+          parkedLeg < 0 ? 0 : 1
+        )
+      }
+      if (dx >= 1 || dy >= 1) {
+        pushZoom(
+          transitionW,
+          transitionW,
+          currentCenter,
+          center,
+          stopIndex,
+          Math.max(-1, legIndex - 1),
+          legIndex > 0 ? 1 : 0
+        )
+      }
+      if (Math.abs(target - transitionW) >= 1) {
+        pushZoom(
+          transitionW,
+          target,
+          center,
+          center,
+          stopIndex,
+          Math.max(-1, legIndex - 1),
+          legIndex > 0 ? 1 : 0
+        )
+      }
+    }
+
     currentW = target
+    currentCenter = center
   }
 
   for (let i = 0; i < stops.length; i++) {
     const arrivingLeg = i - 1
     const departingLeg = i < legs.length ? i : null
+    const arrivingFrame = frames[arrivingLeg] ?? frames[0]
+    const stopW = currentW ?? arrivingFrame.w
+    const stopCenter = arrivingLeg >= 0 ? arrivingFrame.end : frames[0].start
 
-    // A hero stop punches in; everything else holds whatever scale it arrived
-    // at, so the journey doesn't oscillate in and out at all 21 stops.
-    const base = legWidths[arrivingLeg] ?? legWidths[0]
-    const stopW = stops[i].hero ? Math.max(MIN_W, snapZoom(base * HERO_ZOOM)) : (currentW ?? base)
-
-    zoomTo(stopW, i, arrivingLeg, 1)
+    zoomTo(stopW, stopCenter, i, arrivingLeg)
 
     phases.push({
       kind: 'dwell',
@@ -137,92 +249,171 @@ export function buildTimeline(aspect) {
       w0: currentW,
       w1: currentW,
       weight: i === 0 || i === stops.length - 1 ? DWELL * 1.6 : DWELL,
+      cx: currentCenter.cx,
+      cy: currentCenter.cy,
     })
 
     if (departingLeg === null) continue
 
-    zoomTo(legWidths[departingLeg], i, departingLeg, 0)
+    zoomTo(frames[departingLeg].w, frames[departingLeg].start, i, departingLeg)
 
-    // Longer legs earn more scroll, but sub-linearly: the Atlantic crossing is
-    // 20x Munich->Salzburg and must not take 20x the scrolling.
-    let weight = Math.min(2, Math.max(0.85, Math.sqrt(legs[departingLeg].length / 3000)))
+    // Longer legs earn more scroll, but sub-linearly. The transatlantic
+    // opening is long without making every short hop feel rushed.
+    const apparentTravel = legs[departingLeg].length / frames[departingLeg].w
+    let weight = Math.max(
+      0.85,
+      Math.sqrt(legs[departingLeg].length / 3000),
+      apparentTravel * TRACK_SCROLL_FACTOR
+    )
     if (departingLeg === DIVE_LEG) weight = 2.2
 
     phases.push({
       kind: 'draw',
       stopIndex: i,
       legIndex: departingLeg,
+      legT: 0,
       w0: currentW,
       w1: currentW,
       weight,
     })
+
+    // Draw sampling follows the live route head, so the mutable handoff state
+    // must advance to the same endpoint before the next stop is built.
+    // Leaving this at the leg's departure center creates a rewind phase at the
+    // next boundary, even though the preceding draw ends at the destination.
+    currentW = frames[departingLeg].w
+    currentCenter = frames[departingLeg].end
   }
 
-  const total = phases.reduce((a, ph) => a + ph.weight, 0)
-  let acc = 0
-  for (const ph of phases) {
-    ph.p0 = acc / total
-    acc += ph.weight
-    ph.p1 = acc / total
+  const total = phases.reduce((sum, phase) => sum + phase.weight, 0)
+  let accumulated = 0
+  for (const phase of phases) {
+    phase.p0 = accumulated / total
+    accumulated += phase.weight
+    phase.p1 = accumulated / total
   }
 
-  return { phases, legWidths, weight: total }
+  return { phases, legWidths, frames, weight: total }
 }
 
 /**
- * Samples the timeline.
- *
- * Also returns the truncated leg, because the camera centre is derived from
- * the vehicle position -- computing it here means the camera, the drawn line
- * and the marker all come from one truncation and cannot disagree.
+ * Samples the timeline. The active route and the camera head are derived from
+ * the same leg progress, so the line never appears to outrun its camera.
  */
 export function sampleTimeline(timeline, p) {
   const { phases } = timeline
-  const clamped = p < 0 ? 0 : p > 1 ? 1 : p
+  const clamped = clamp(p, 0, 1)
 
   let i = 0
   while (i < phases.length - 1 && clamped >= phases[i].p1) i++
-  const ph = phases[i]
-
-  const span = ph.p1 - ph.p0
-  const local = span > 0 ? (clamped - ph.p0) / span : 0
+  const phase = phases[i]
+  const span = phase.p1 - phase.p0
+  const local = span > 0 ? (clamped - phase.p0) / span : 0
 
   let w
   let legT
+  let cx
+  let cy
 
-  if (ph.kind === 'draw') {
-    // Pure pan: scale pinned, vehicle eased along the leg.
-    w = ph.w0
+  if (phase.kind === 'draw') {
+    w = phase.w0
     legT = easeInOutSine(local)
-  } else if (ph.kind === 'zoom') {
-    // Pure zoom: centre pinned (the vehicle is parked), log-interpolated.
-    w = ph.w0 * Math.pow(ph.w1 / ph.w0, easeInOutCubic(local))
-    legT = ph.legT
+    const center = trackingCenter(legs[phase.legIndex], legT)
+    cx = center.cx
+    cy = center.cy
+  } else if (phase.kind === 'zoom') {
+    const eased = easeInOutCubic(local)
+    w = phase.w0 * Math.pow(phase.w1 / phase.w0, eased)
+    legT = phase.legT
+    cx = phase.cx0 + (phase.cx1 - phase.cx0) * eased
+    cy = phase.cy0 + (phase.cy1 - phase.cy0) * eased
   } else {
-    w = ph.w0
-    legT = ph.legT
+    w = phase.w0
+    legT = phase.legT
+    cx = phase.cx
+    cy = phase.cy
   }
 
-  const legIndex = ph.legIndex
+  const legIndex = phase.legIndex
   const active = truncateLeg(legs[Math.max(0, legIndex)], legIndex < 0 ? 0 : legT)
-  const head = active.head
 
   return {
-    cx: head.x,
-    cy: head.y,
+    cx,
+    cy,
     w: Math.max(MIN_W, w),
     legIndex,
     legT,
-    phase: ph.kind,
-    stopIndex: ph.stopIndex,
+    phase: phase.kind,
+    stopIndex: phase.stopIndex,
     active,
   }
 }
 
-/** Scroll progress at which a stop is being dwelled on -- used by the HUD. */
+/**
+ * Returns the exact parked camera frame for a stop.
+ *
+ * This deliberately bypasses the scroll timeline's transition phases. A
+ * chapter must finish at the arriving leg's endpoint and remain there until
+ * the next command starts.
+ */
+export function parkedFrameForStop(timeline, stopIndex) {
+  if (!timeline?.frames?.length) return null
+
+  const incoming = stopIndex - 1
+  const frame = timeline.frames[incoming >= 0 ? incoming : 0]
+  const center = incoming >= 0 ? frame.end : frame.start
+
+  return {
+    cx: center.cx,
+    cy: center.cy,
+    w: frame.w,
+    legIndex: incoming,
+    legT: incoming >= 0 ? 1 : 0,
+    phase: 'dwell',
+    stopIndex,
+    active: incoming >= 0 ? truncateLeg(legs[incoming], 1) : null,
+  }
+}
+
+/**
+ * Samples one complete leg as a single command-driven shot.
+ *
+ * The route and camera use the same local t. The camera starts at the exact
+ * parked frame of the current stop, converges toward the next tracking shot
+ * while the route is moving, and ends at the next destination frame. There
+ * are no independent pre-departure or post-arrival phases.
+ */
+export function sampleLegTravel(timeline, legIndex, t, origin) {
+  const leg = legs[legIndex]
+  const target = timeline?.frames?.[legIndex]
+  if (!leg || !target) return null
+
+  const local = clamp(t, 0, 1)
+  const routeT = easeInOutSine(local)
+  const start = origin ?? {
+    cx: target.start.cx,
+    cy: target.start.cy,
+    w: target.w,
+  }
+  const targetCenter = trackingCenter(leg, routeT)
+  const cameraT = routeT
+
+  return {
+    cx: targetCenter.cx,
+    cy: targetCenter.cy,
+    w: start.w + (target.w - start.w) * cameraT,
+    legIndex,
+    legT: routeT,
+    phase: 'draw',
+    stopIndex: local >= 1 ? legIndex + 1 : legIndex,
+    active: truncateLeg(leg, routeT),
+  }
+}
+
+/** Scroll progress at which a stop is being dwelled on, used by the HUD. */
 export function progressForStop(timeline, stopIndex) {
   const dwell = timeline.phases.find(
-    (ph) => ph.kind === 'dwell' && ph.stopIndex === stopIndex
+    (phase) => phase.kind === 'dwell' && phase.stopIndex === stopIndex
   )
   return dwell ? (dwell.p0 + dwell.p1) / 2 : 0
 }

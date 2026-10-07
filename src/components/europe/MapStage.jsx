@@ -1,12 +1,12 @@
-import { forwardRef, useMemo } from 'react'
+import { forwardRef, useEffect, useMemo } from 'react'
 
 import { landCoarse, landFine } from '../../data/europeMap.js'
-import { legs, segmentPath, transfers } from '../../lib/europeRoute.js'
+import { legs, segmentPath } from '../../lib/europeRoute.js'
 import { R, project } from '../../lib/projection.js'
 import { PAPER, ROUTE } from './paper.js'
 
 /**
- * The animated map. Everything in here lives inside the scrubbing viewBox.
+ * The map stage. Everything in here lives inside the selected chapter viewBox.
  *
  * Deliberately contains no filters -- see paper.js. Grain and vignette are
  * static sibling layers stacked on top by Europe2026Page.
@@ -17,6 +17,40 @@ import { PAPER, ROUTE } from './paper.js'
  */
 
 const D = Math.PI / 180
+
+const COUNTRY_LABELS = [
+  ['CANADA', -106, 57],
+  ['UNITED STATES', -102, 39],
+  ['ICELAND', -18.7, 64.9],
+  ['IRELAND', -8.1, 53.3],
+  ['UNITED KINGDOM', -3.2, 55.1],
+  ['PORTUGAL', -8.1, 39.6],
+  ['SPAIN', -3.7, 40.2],
+  ['FRANCE', 2.1, 46.4],
+  ['BELGIUM', 4.6, 50.7],
+  ['NETHERLANDS', 5.3, 53.15],
+  ['GERMANY', 10.3, 51.1],
+  ['DENMARK', 9.3, 56.1],
+  ['NORWAY', 8.4, 61.5],
+  ['SWEDEN', 15.1, 62.2],
+  ['FINLAND', 26, 64.5],
+  ['SWITZERLAND', 9.1, 47.15],
+  ['AUSTRIA', 14.5, 46.95],
+  ['ITALY', 12.4, 42.7],
+  ['CZECHIA', 16.2, 49.35],
+  ['POLAND', 19.1, 52],
+  ['SLOVAKIA', 18.55, 48.75],
+  ['SLOVENIA', 15.25, 45.75],
+  ['CROATIA', 16.4, 44.8],
+  ['HUNGARY', 21, 47],
+  ['BOSNIA', 17.8, 44.1],
+  ['SERBIA', 20.8, 44],
+  ['ROMANIA', 25, 45.8],
+  ['UKRAINE', 31.3, 49],
+].map(([name, lon, lat]) => {
+  const [x, y] = project(lon, lat)
+  return { name, x, y }
+})
 
 /** In Mercator meridians are vertical and parallels horizontal, so this is free. */
 function buildGraticule(spacingDeg) {
@@ -32,26 +66,11 @@ function buildGraticule(spacingDeg) {
   return lines
 }
 
-/**
- * Portolan rhumb rosette. In Mercator a constant-bearing line genuinely IS
- * straight, so this is cartographically honest rather than decoration.
- */
-function buildRhumbs(originLon, originLat, count = 32, length = 30000) {
-  const [ox, oy] = project(originLon, originLat)
-  return Array.from({ length: count }, (_, i) => {
-    const a = (i * 360) / count
-    return {
-      key: `r${i}`,
-      x1: ox,
-      y1: oy,
-      x2: ox + Math.cos(a * D) * length,
-      y2: oy + Math.sin(a * D) * length,
-    }
-  })
-}
-
 export const MapStage = forwardRef(function MapStage(
-  { fineRef, coarseRef, graticuleRef, rhumbRef, routeRef, headRefs, legRefs, mobile },
+  {
+    fineRef, coarseRef, fineShadowRef, coarseShadowRef, graticuleRef,
+    countryLabelRef, routeRef, headRefs, legRefs,
+  },
   svgRef
 ) {
   const graticules = useMemo(
@@ -64,31 +83,54 @@ export const MapStage = forwardRef(function MapStage(
     []
   )
 
-  const rhumbs = useMemo(() => buildRhumbs(-28, 52), [])
+  // Route geometry is mutated through refs when a chapter is selected. Clear a leg's
+  // partial path as soon as its group becomes hidden so a later group switch
+  // can never expose the previous frame's geometry for one paint.
+  useEffect(() => {
+    const groups = legRefs.current.filter(Boolean)
+    const clearHiddenGeometry = (group) => {
+      if (group.style.display !== 'none') return
+      group.querySelectorAll('path[data-route-layer]').forEach((path) => {
+        path.style.display = 'none'
+        path.setAttribute('d', '')
+      })
+    }
+
+    groups.forEach(clearHiddenGeometry)
+
+    if (typeof MutationObserver === 'undefined') return undefined
+
+    const observers = groups.map((group) => {
+      const observer = new MutationObserver(() => clearHiddenGeometry(group))
+      observer.observe(group, { attributes: true, attributeFilter: ['style'] })
+      return observer
+    })
+
+    return () => observers.forEach((observer) => observer.disconnect())
+  }, [legRefs])
 
   return (
     <svg
       ref={svgRef}
-      className="absolute inset-0 h-full w-full"
+      className="eu-map absolute inset-0 h-full w-full"
       preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
     >
-      <rect x="-30000" y="-24000" width="60000" height="48000" fill={PAPER.sea} />
+      <defs>
+        {/* A small, repeatable fiber pattern gives the map a printed stock
+            feel without putting a turbulence filter on the animated root. */}
+        <pattern id="eu-paper-fiber" width="180" height="180" patternUnits="userSpaceOnUse">
+          <path d="M8 36L78 28M102 120L166 132M36 164L112 154" stroke={PAPER.fiber} strokeOpacity="0.22" strokeWidth="2" />
+          <path d="M22 88L60 92M128 52L174 46M78 18L92 62" stroke={PAPER.fiber} strokeOpacity="0.14" strokeWidth="1" />
+          <path d="M0 71C42 66 93 78 180 69M0 143C61 137 121 148 180 141" stroke={PAPER.highlight} strokeOpacity="0.13" strokeWidth="1" fill="none" />
+          <circle cx="28" cy="132" r="2" fill={PAPER.fiber} fillOpacity="0.16" />
+          <circle cx="144" cy="94" r="1.5" fill={PAPER.fiber} fillOpacity="0.14" />
+          <circle cx="91" cy="39" r="1" fill={PAPER.burn} fillOpacity="0.18" />
+          <circle cx="166" cy="166" r="2.5" fill={PAPER.burn} fillOpacity="0.09" />
+        </pattern>
+      </defs>
 
-      {/* Rhumb rosette, faded out once the camera is inside Europe. */}
-      {!mobile && (
-        <g
-          ref={rhumbRef}
-          stroke={PAPER.graticule}
-          strokeOpacity="0.22"
-          fill="none"
-          style={{ opacity: 0 }}
-        >
-          {rhumbs.map((l) => (
-            <line key={l.key} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} />
-          ))}
-        </g>
-      )}
+      <rect x="-30000" y="-24000" width="60000" height="48000" fill={PAPER.sea} />
 
       {/* Four pre-built spacings; the parent toggles display by zoom tier. */}
       <g ref={graticuleRef} stroke={PAPER.graticule} strokeOpacity="0.3" fill="none">
@@ -99,6 +141,15 @@ export const MapStage = forwardRef(function MapStage(
             ))}
           </g>
         ))}
+      </g>
+
+      {/* A displaced underprint gives borders the soft black relief visible on
+          photographed mid-century maps without a live blur filter. */}
+      <g ref={coarseShadowRef} fill="none" stroke={PAPER.borderShadow} strokeLinejoin="round" strokeLinecap="round" opacity="0.48" aria-hidden="true">
+        {landCoarse.map((d, i) => <path key={i} d={d} />)}
+      </g>
+      <g ref={fineShadowRef} fill="none" stroke={PAPER.borderShadow} strokeLinejoin="round" strokeLinecap="round" opacity="0.48" aria-hidden="true">
+        {landFine.map((d, i) => <path key={i} d={d} />)}
       </g>
 
       {/* Coarse LOD: only ever visible during the Atlantic opening. */}
@@ -115,30 +166,35 @@ export const MapStage = forwardRef(function MapStage(
         ))}
       </g>
 
-      {/* Transfer ticks -- small crosses where a leg changes vehicle. */}
-      <g stroke={PAPER.landEdge} strokeOpacity="0.5" fill="none">
-        {transfers.map((t) => (
-          <g key={t.slug}>
-            <line x1={t.x - 14} y1={t.y} x2={t.x + 14} y2={t.y} />
-            <line x1={t.x} y1={t.y - 14} x2={t.x} y2={t.y + 14} />
-          </g>
+      <rect
+        x="-30000"
+        y="-24000"
+        width="60000"
+        height="48000"
+        fill="url(#eu-paper-fiber)"
+        opacity="0.48"
+        pointerEvents="none"
+      />
+
+      <g
+        ref={countryLabelRef}
+        className="eu-country-labels"
+        fill={PAPER.countryInk}
+        stroke={PAPER.countryHalo}
+        textAnchor="middle"
+        aria-hidden="true"
+      >
+        {COUNTRY_LABELS.map((country) => (
+          <text key={country.name} x={country.x} y={country.y}>
+            {country.name}
+          </text>
         ))}
       </g>
 
-      {/*
-        One path per sub-segment, all identical: a single red line, as in the
-        films. Each carries its complete geometry in data-full; the parent
-        overwrites `d` only on the leg currently drawing and restores it from
-        data-full once that leg completes, so every other path is written once
-        and never touched again.
-      */}
-      <g
-        ref={routeRef}
-        fill="none"
-        stroke={ROUTE.color}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      {/* One layered red line for the active leg. These are three real paths,
+          rather than a path plus <use>, so every layer receives the exact same
+          partial geometry and its own explicit stroke width. */}
+      <g ref={routeRef} fill="none" strokeLinecap="round" strokeLinejoin="round">
         {legs.map((leg) => (
           <g
             key={leg.index}
@@ -146,21 +202,34 @@ export const MapStage = forwardRef(function MapStage(
             ref={(el) => (legRefs.current[leg.index] = el)}
             style={{ display: 'none' }}
           >
-            {leg.segments.map((seg, j) => {
-              const full = segmentPath(seg)
-              return (
-                <path
-                  key={j}
-                  ref={(el) => {
-                    const segs = (headRefs.current.segs[leg.index] ??= [])
-                    segs[j] = el
-                  }}
-                  d={full}
-                  data-full={full}
-                  data-role="line"
-                />
-              )
-            })}
+            {[
+              ['underprint', PAPER.routeUnderprint],
+              ['body', ROUTE.color],
+              ['core', PAPER.routeHighlight],
+            ].map(([layer, color], layerIndex) => (
+              <g key={layer} data-route-layer={layer}>
+                {leg.segments.map((seg, j) => {
+                  const full = segmentPath(seg)
+                  return (
+                    <path
+                      key={j}
+                      ref={(el) => {
+                        const segs = (headRefs.current.segs[leg.index] ??= [])
+                        const layers = (segs[j] ??= [])
+                        layers[layerIndex] = el
+                      }}
+                      d=""
+                      data-full={full}
+                      data-role="line"
+                      data-route-layer={layer}
+                      fill="none"
+                      stroke={color}
+                      style={{ display: 'none' }}
+                    />
+                  )
+                })}
+              </g>
+            ))}
           </g>
         ))}
       </g>

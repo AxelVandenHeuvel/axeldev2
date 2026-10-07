@@ -11,18 +11,24 @@
  */
 
 export const PAPER = {
-  base: '#e8dcc0', // aged cream field
-  highlight: '#f2e8d0', // 3 points off the site's #f2ebe0 -- deliberate continuity
-  sea: '#dcd0b4',
-  land: '#e6d9ba',
-  landEdge: '#8a7355', // coastline and border ink
-  graticule: '#b09a76',
-  shadow: '#c4ad86',
-  burn: '#8a6f4a',
-  route: '#a8322a', // the one red line
-  pin: '#a8322a',
-  inkDeep: '#3d2b1a', // display type
-  inkBody: '#5a4632', // body copy
+  base: '#aa956c', // darkened stock visible at the worn edges
+  highlight: '#e8d8ad', // lighter paper reserved for readable notes
+  sea: '#7f8d89', // oxidized blue-green wash from an old hand-tinted atlas
+  land: '#cfb982', // sun-faded ochre parchment
+  landEdge: '#484137', // softened brown-black printing ink
+  borderShadow: '#171b1a', // displaced relief around political boundaries
+  graticule: '#59615c', // faded blue-black cartographic ink
+  shadow: '#71634c',
+  burn: '#594935',
+  fiber: '#5e5545',
+  route: '#d92d35', // bright red route ink
+  routeHighlight: '#ff5d57',
+  routeUnderprint: '#382728',
+  pin: '#d92d35',
+  inkDeep: '#2f2b26', // display type
+  inkBody: '#463d33', // body copy
+  countryInk: '#273337',
+  countryHalo: '#d2bf8e',
 }
 
 /**
@@ -30,12 +36,16 @@ export const PAPER = {
  *
  * The films don't distinguish how you travelled -- it's a single solid red
  * line advancing across the map, and that uniformity is most of what makes it
- * read as the sequence it's imitating. Plane, train and bus differ only in the
- * marker riding the head of the line and in how much the path bows.
+ * read as the sequence it's imitating.
  *
  * Width is in screen pixels; see the styling block in Europe2026Page.
  */
-export const ROUTE = { color: PAPER.route, width: 2.8 }
+export const ROUTE = {
+  color: PAPER.route,
+  underprintWidth: 6.4,
+  width: 4.2,
+  coreWidth: 1.25,
+}
 
 const svgTile = (w, h, inner) =>
   `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'%3E${inner}%3C/svg%3E")`
@@ -47,16 +57,24 @@ const svgTile = (w, h, inner) =>
 export const GRAIN_URL = svgTile(
   240,
   240,
-  `%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='0.5'/%3E`
+  `%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='3' stitchTiles='stitch' seed='7'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='0.3'/%3E`
 )
 
 /** Low-frequency sepia blotching -- the "this has been in a drawer" layer. */
 export const MOTTLE_URL = svgTile(
   600,
   600,
-  `%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.02' numOctaves='3' stitchTiles='stitch' seed='19'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.72 0 0 0 0 0.60 0 0 0 0 0.42 0 0 0 0.35 0'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23m)'/%3E`
+  `%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.01 0.018' numOctaves='2' stitchTiles='stitch' seed='19'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.72 0 0 0 0 0.60 0 0 0 0 0.42 0 0 0 0.28 0'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23m)'/%3E`
 )
+
+/** Fixed stains, foxing and fold shadows from a map repeatedly opened by hand. */
+export const PATINA = [
+  'radial-gradient(ellipse at 13% 17%, rgba(91,61,31,0.08), rgba(91,61,31,0.025) 10%, transparent 22%)',
+  'radial-gradient(ellipse at 81% 72%, rgba(82,54,28,0.06), rgba(82,54,28,0.02) 13%, transparent 25%)',
+  'radial-gradient(circle at 67% 9%, rgba(116,78,35,0.1), transparent 18%)',
+  'radial-gradient(circle at 28% 84%, rgba(76,49,25,0.08), transparent 22%)',
+].join(',')
 
 /** Burnt edges. A radial gradient, not a filter -- same look, no offscreen pass. */
 export const VIGNETTE =
-  'radial-gradient(ellipse 120% 100% at 50% 45%, rgba(0,0,0,0) 40%, rgba(122,92,54,0.18) 72%, rgba(80,56,28,0.42) 100%)'
+  'radial-gradient(ellipse 115% 96% at 48% 43%, rgba(246,226,174,0.06) 26%, rgba(82,61,38,0.11) 68%, rgba(43,31,21,0.43) 100%)'

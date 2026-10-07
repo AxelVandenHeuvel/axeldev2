@@ -1,11 +1,10 @@
 import { forwardRef } from 'react'
 
 import { destinations, stops } from '../../lib/europeRoute.js'
-import { GLYPH } from './glyphs.js'
 import { PAPER } from './paper.js'
 
 /**
- * Pins, labels, and the vehicle marker -- as HTML, not SVG.
+ * Pins and labels as HTML, not SVG.
  *
  * This is deliberate. Inside the scrubbing viewBox a pin's hit area would
  * shrink and grow across a 22x zoom range, and SVG <text> at those scales is
@@ -16,9 +15,7 @@ import { PAPER } from './paper.js'
  * `transform: translate3d(...)` on these elements every frame, which OVERRIDES
  * any Tailwind -translate-x-1/2 class rather than composing with it. So
  * centring is done with negative margins instead, and each element is a fixed
- * box whose middle is the anchor point. The marker additionally rotates, and
- * rotation pivots about the box centre -- which is only the glyph's centre
- * because the box is sized and offset to make it so.
+ * box whose middle is the anchor point.
  */
 
 /**
@@ -32,10 +29,8 @@ import { PAPER } from './paper.js'
  */
 const PIN_H = 46
 const PIN_LEAD = 18
-const MARKER_BOX = 34
-
 export const PinLayer = forwardRef(function PinLayer(
-  { pinRefs, markerRef, markerGlyphRef, onSelect },
+  { pinRefs, onSelect },
   overlayRef
 ) {
   return (
@@ -66,7 +61,7 @@ export const PinLayer = forwardRef(function PinLayer(
 
         // The origin is still named on the map -- it's where the trip left
         // from -- but there's nothing to open, so it's a plain div rather than
-        // a button, with a muted marker so it doesn't read as clickable.
+        // a button, with a muted dot so it doesn't read as clickable.
         if (stop.origin) {
           return (
             <div
@@ -99,36 +94,6 @@ export const PinLayer = forwardRef(function PinLayer(
           </button>
         )
       })}
-
-      {/*
-        The vehicle. Rides the head of the drawing line.
-        Fixed box, centred by margin, so `rotate()` pivots on the glyph's own
-        centre and the nose stays on the line.
-      */}
-      <div
-        ref={markerRef}
-        className="eu-marker absolute left-0 top-0"
-        style={{
-          width: MARKER_BOX,
-          height: MARKER_BOX,
-          marginLeft: -MARKER_BOX / 2,
-          marginTop: -MARKER_BOX / 2,
-          visibility: 'hidden',
-        }}
-      >
-        <svg
-          ref={markerGlyphRef}
-          width={MARKER_BOX}
-          height={MARKER_BOX}
-          viewBox="-14 -14 28 28"
-          className="overflow-visible"
-          aria-hidden="true"
-        >
-          <g data-role="glyph" fill={PAPER.inkDeep}>
-            <path d={GLYPH.plane} />
-          </g>
-        </svg>
-      </div>
     </div>
   )
 })

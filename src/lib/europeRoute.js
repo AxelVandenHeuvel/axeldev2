@@ -10,7 +10,6 @@
  * exactly ONE truncation code path for the progressive route draw.
  */
 
-import { waterCount } from './landmass.js'
 import { greatCircle, project } from './projection.js'
 import { itinerary, places } from '../data/europe2026.js'
 
@@ -26,40 +25,87 @@ import { itinerary, places } from '../data/europe2026.js'
  */
 export const MIN_W = 1200
 
-/** How far a leg bows off the straight line, as a fraction of its length. */
-const BOW = { plane: 0.16, train: 0.05, bus: 0.08 }
-
 /**
- * Hand-drawn wobble, as a fraction of the segment's own length and capped.
+ * Rail and road corridors for the current itinerary, in [longitude, latitude].
  *
- * A fixed amplitude is wrong: 8 world units is a pleasant waver across the
- * Atlantic but is ~8% of the Bovec->Bled hop, which reads as the line being
- * broken rather than hand-inked.
+ * These are deliberately geographic waypoints rather than screen-space bends.
+ * A single bowed arc looks good for a plane, but it can send a train from
+ * Bled to Venice across the Adriatic or a train from Rome to Naples into the
+ * Tyrrhenian Sea. The waypoints follow the broad rail or road corridor while
+ * leaving the exact route detail to the map's red line.
+ *
+ * Every train or bus hop in the itinerary is listed, including direct hops
+ * whose endpoint-to-endpoint line is already safe. That makes adding a new
+ * ground leg an explicit, reviewable geometry change instead of silently
+ * falling back to an airborne-looking arc.
  */
-const JITTER_RATIO = 0.012
-const JITTER_MAX = 8
-
-const SAMPLES = 24
-
-/** Deterministic LCG. Seeded per-leg so the wobble is stable across reloads. */
-function makeRandom(seed) {
-  let s = seed >>> 0
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0
-    return s / 4294967296 - 0.5
-  }
+const GROUND_WAYPOINTS = {
+  'amsterdam>berlin': [[9.732, 52.375]], // Hannover
+  'berlin>munich': [
+    [12.373, 51.34], // Leipzig
+    [11.08, 49.45], // Nuremberg
+  ],
+  'munich>salzburg': [[12.13, 47.86]], // Rosenheim
+  'salzburg>vienna': [[14.286, 48.306]], // Linz
+  'vienna>prague': [[16.607, 49.195]], // Brno
+  'prague>ljubljana': [
+    [16.374, 48.208], // Vienna
+    [15.439, 47.071], // Graz
+    [15.648, 46.555], // Maribor
+  ],
+  'ljubljana>bovec': [
+    [14.355, 46.239], // Kranj
+    [13.733, 46.183], // Tolmin
+  ],
+  'bovec>bohinjska': [[13.733, 46.183]], // Tolmin
+  'bohinjska>bled': [],
+  'bled>venice': [
+    [14.506, 46.057], // Ljubljana
+    [13.236, 46.072], // Udine
+    [12.245, 45.666], // Treviso
+    [12.245, 45.49], // Mestre; the final segment is the rail bridge to Venice
+  ],
+  'venice>florence': [
+    [11.876, 45.406], // Padua
+    [11.343, 44.495], // Bologna
+  ],
+  'florence>rome': [
+    [11.88, 43.46], // Arezzo
+    [12.11, 42.72], // Orvieto
+  ],
+  'rome>naples': [[13.83, 41.49]], // Cassino
+  'heidelberg>prague': [
+    [11.08, 49.45], // Nuremberg
+    [12.096, 50.827], // Cheb
+  ],
+  'prague>krakow': [
+    [18.282, 49.835], // Ostrava
+    [19.02, 50.26], // Katowice
+  ],
+  'krakow>zdiar': [[19.95, 49.3]], // Zakopane
+  'zdiar>budapest': [
+    [21.261, 48.716], // Košice
+    [20.78, 48.1], // Miskolc
+  ],
+  'frankfurt>interlaken': [
+    [7.589, 47.56], // Basel
+    [7.447, 46.948], // Bern
+  ],
 }
 
-/** Quadratic bezier through a perpendicular control point offset. */
-function bowedArc(a, b, bow, n = SAMPLES) {
+const PLANE_BOW = 0.16
+const PLANE_SAMPLES = 24
+
+/** Quadratic flight arc used only for planes without an explicit great circle. */
+function bowedArc(a, b, bow, n = PLANE_SAMPLES) {
   const mx = (a[0] + b[0]) / 2
   const my = (a[1] + b[1]) / 2
   const dx = b[0] - a[0]
   const dy = b[1] - a[1]
   const cx = mx - dy * bow
   const cy = my + dx * bow
-
   const pts = []
+
   for (let i = 0; i <= n; i++) {
     const t = i / n
     const u = 1 - t
@@ -71,68 +117,53 @@ function bowedArc(a, b, bow, n = SAMPLES) {
   return pts
 }
 
-/** Perturbs interior vertices so the line reads hand-inked. Endpoints stay put. */
-function jitter(pts, amp, seed) {
-  const rnd = makeRandom(seed)
-  return pts.map((p, i) =>
-    i === 0 || i === pts.length - 1 ? p : [p[0] + rnd() * amp, p[1] + rnd() * amp]
-  )
+/** Project a geographic route corridor into the shared SVG coordinate space. */
+function routeThroughWaypoints(from, to, waypoints) {
+  const coords = [
+    [from.lon, from.lat],
+    ...waypoints,
+    [to.lon, to.lat],
+  ]
+  const pts = []
+
+  for (let i = 0; i < coords.length - 1; i++) {
+    const a = project(...coords[i])
+    const b = project(...coords[i + 1])
+    const n = Math.max(2, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 120))
+    for (let j = i === 0 ? 0 : 1; j <= n; j++) {
+      const t = j / n
+      pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t])
+    }
+  }
+
+  return pts
 }
 
-function polyline(fromSlug, toSlug, mode, geo, seed) {
+function polyline(fromSlug, toSlug, mode, geo) {
   const a = places[fromSlug]
   const b = places[toSlug]
 
-  if (geo === 'gc') {
+  if (mode === 'plane' && geo === 'gc') {
     // True great circle -- the northward bow past Greenland is the single most
     // "adventure map" element on the page, and at 11,000km it's a real
     // hundreds-of-km difference from a straight Mercator line.
     const pts = greatCircle(a.lon, a.lat, b.lon, b.lat, 48).map(([lon, lat]) =>
       project(lon, lat)
     )
-    return jitter(pts, JITTER_MAX, seed)
+    return pts
   }
 
-  const pa = project(a.lon, a.lat)
-  const pb = project(b.lon, b.lat)
-  const span = Math.hypot(pb[0] - pa[0], pb[1] - pa[1])
-  const amp = Math.min(JITTER_MAX, span * JITTER_RATIO)
-  const bow = BOW[mode] ?? BOW.train
-
-  const shape = (b2) => jitter(bowedArc(pa, pb, b2), amp, seed)
-
-  // Aircraft may cross water; ground transport may not. A bow is a
-  // perpendicular offset and perpendicular has two directions -- picking
-  // blindly puts the Florence->Rome train out in the Tyrrhenian. Try both
-  // signs, then progressively flatter, and take the first that stays ashore.
-  if (mode === 'plane') return shape(bow)
-
-  // Ordered by preference: the natural bow first, then its mirror, then
-  // progressively stronger deviations. Rome->Naples crosses the Gulf of Gaeta
-  // even dead straight, so it needs roughly 3x the default bow inland before
-  // it clears the water -- hence the wide range.
-  const candidates = [
-    bow,
-    -bow,
-    bow * 0.5,
-    -bow * 0.5,
-    0,
-    bow * 1.75,
-    -bow * 1.75,
-    bow * 3,
-    -bow * 3,
-    bow * 4.5,
-    -bow * 4.5,
-  ]
-
-  let best = null
-  for (const candidate of candidates) {
-    const pts = shape(candidate)
-    const water = waterCount(pts)
-    if (best === null || water < best.water) best = { pts, water }
-    if (water === 0) break
+  if (mode === 'plane') {
+    const pa = project(a.lon, a.lat)
+    const pb = project(b.lon, b.lat)
+    return bowedArc(pa, pb, PLANE_BOW)
   }
-  return best.pts
+
+  const key = `${fromSlug}>${toSlug}`
+  if (!Object.prototype.hasOwnProperty.call(GROUND_WAYPOINTS, key)) {
+    throw new Error(`Missing explicit ground corridor for ${key}`)
+  }
+  return routeThroughWaypoints(a, b, GROUND_WAYPOINTS[key])
 }
 
 /** Cumulative arc length, so truncation can be done by distance rather than index. */
@@ -189,7 +220,7 @@ export const transfers = Object.entries(places)
   })
 
 /**
- * The 20 legs. Each carries one or more sub-segments (mixed-mode legs have
+ * The 21 legs. Each carries one or more sub-segments (mixed-mode legs have
  * two), and each sub-segment is an independent polyline with its own mode --
  * which is what makes the drawn line change from railroad ties to bus dots at
  * the transfer point.
@@ -209,8 +240,8 @@ export const legs = itinerary.slice(1).map((entry, i) => {
         }))
       : [{ from: fromSlug, to: toSlug, mode: via.mode, geo: via.geo ?? null }]
 
-  const segments = hops.map((hop, j) => {
-    const pts = polyline(hop.from, hop.to, hop.mode, hop.geo, (i + 1) * 977 + j * 31)
+  const segments = hops.map((hop) => {
+    const pts = polyline(hop.from, hop.to, hop.mode, hop.geo)
     const cum = cumulative(pts)
     return { mode: hop.mode, pts, cum, length: cum[cum.length - 1] }
   })

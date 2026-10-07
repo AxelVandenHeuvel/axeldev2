@@ -38,7 +38,7 @@
 
 export const meta = {
   title: 'Europe 2026',
-  subtitle: 'twenty legs · twenty destinations',
+  subtitle: 'twenty-one legs · twenty-one destinations',
   dates: 'summer 2026',
 }
 
@@ -219,9 +219,17 @@ export const places = {
     blurb: '',
     photos: [],
   },
+  boston: {
+    name: 'Boston',
+    country: 'United States',
+    lon: -71.0589,
+    lat: 42.3601,
+    blurb: '',
+    photos: [],
+  },
 }
 
-/** 21 entries -> 20 legs. Entry i is reached FROM entry i-1 by entry i's `via`. */
+/** 22 entries -> 21 legs. Entry i is reached FROM entry i-1 by entry i's `via`. */
 export const itinerary = [
   // origin: where the journey starts from, not somewhere it visits. Still
   // anchors the first leg and gets a title beat, but is not a selectable
@@ -266,4 +274,5 @@ export const itinerary = [
   { place: 'budapest', via: { mode: 'train' } },
   { place: 'frankfurt', via: { mode: 'plane' } },
   { place: 'interlaken', hero: true, via: { mode: 'train' } },
+  { place: 'boston', hero: true, via: { mode: 'plane', geo: 'gc' } },
 ]

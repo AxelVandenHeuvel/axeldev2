@@ -1,92 +1,150 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ChapterHud } from '../components/europe/ChapterHud.jsx'
+import { JourneyNav } from '../components/europe/JourneyNav.jsx'
 import { JournalModal } from '../components/europe/JournalModal.jsx'
 import { MapStage } from '../components/europe/MapStage.jsx'
 import { PinLayer } from '../components/europe/PinLayer.jsx'
-import { glyphFlip, setMarkerGlyph } from '../components/europe/glyphs.js'
-import { StaticRouteMap } from '../components/europe/StaticRouteMap.jsx'
-import { useScrollDirector, useStageSize } from '../components/europe/useScrollDirector.js'
-import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE, VIGNETTE } from '../components/europe/paper.js'
-import { buildTimeline, progressForStop, sampleTimeline } from '../lib/europeCamera.js'
+import { TravelFootageOverlay } from '../components/europe/TravelFootageOverlay.jsx'
+import { GRAIN_URL, MOTTLE_URL, PAPER, PATINA, ROUTE, VIGNETTE } from '../components/europe/paper.js'
+import {
+  destinationFootageOpacity,
+  footageOpacity,
+  footagePlanForLeg,
+  sequencedFootageMix,
+} from '../data/europeMedia.js'
+import { buildTimeline, parkedFrameForStop, sampleLegTravel } from '../lib/europeCamera.js'
 import { destinations, legs, stops } from '../lib/europeRoute.js'
-import { meta } from '../data/europe2026.js'
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion.js'
 
 import '../components/europe/europe.css'
 
-/**
- * Europe 2026 -- the scroll cutscene.
- *
- * Default export because App.jsx lazy()-loads this; the rest of the codebase
- * uses named exports.
- *
- * The hot path never touches React state. useScrollDirector calls onFrame
- * inside rAF and onFrame mutates the DOM through refs. React re-renders only
- * on chapter boundaries (~29 times over the whole page) and when the journal
- * opens.
- */
-
-/**
- * Scroll length. Sized for the phase count -- every stop now gets a dwell and
- * every leg a separate depart + draw, so there is more to pace than before.
- */
-const TRACK_VH_DESKTOP = 1500
-const TRACK_VH_MOBILE = 950
-
 /** Above this viewBox width the fine European geometry isn't worth drawing. */
 const LOD_SWAP = 6000
-const RHUMB_FADE = [4000, 11000]
-
-function graticuleTier(w) {
-  if (w > 12000) return '20'
-  if (w > 4000) return '10'
-  if (w > 1800) return '5'
-  return '2'
+function durationForLeg(leg) {
+  if (!leg) return 2800
+  // Long crossings should feel like travel, while short regional hops still
+  // get enough time for the route and camera move to read clearly.
+  const base = Math.min(10000, Math.max(3200, 2800 + Math.sqrt(leg.length) * 38))
+  const { transport, destination } = footagePlanForLeg(leg, stops[leg.index + 1])
+  if (transport && destination) return Math.max(9000, base)
+  if (destination) return Math.max(6800, base)
+  if (transport) return Math.max(6200, base)
+  return base
 }
 
+function graticuleWeights(w) {
+  const blend = (low, high) => {
+    const t = Math.min(1, Math.max(0, (w - low) / (high - low)))
+    return t * t * (3 - 2 * t)
+  }
+
+  if (w >= 14400) return { 20: 1 }
+  if (w > 9600) {
+    const t = blend(9600, 14400)
+    return { 10: 1 - t, 20: t }
+  }
+  if (w >= 4800) return { 10: 1 }
+  if (w > 3200) {
+    const t = blend(3200, 4800)
+    return { 5: 1 - t, 10: t }
+  }
+  if (w >= 2160) return { 5: 1 }
+  if (w > 1440) {
+    const t = blend(1440, 2160)
+    return { 2: 1 - t, 5: t }
+  }
+  return { 2: 1 }
+}
+
+function useStageSize(ref, onResize) {
+  const callbackRef = useRef(onResize)
+
+  useEffect(() => {
+    callbackRef.current = onResize
+  }, [onResize])
+
+  useEffect(() => {
+    const element = ref.current
+    if (!element) return undefined
+
+    let lastWidth = 0
+    let lastHeight = 0
+    let timer = 0
+
+    const apply = () => {
+      const rect = element.getBoundingClientRect()
+      lastWidth = rect.width
+      lastHeight = rect.height
+      callbackRef.current({ width: rect.width, height: rect.height })
+    }
+
+    const maybeApply = () => {
+      const rect = element.getBoundingClientRect()
+      const widthChanged = Math.abs(rect.width - lastWidth) > 1
+      const heightChanged = Math.abs(rect.height - lastHeight) > 120
+      if (!widthChanged && !heightChanged) return
+      window.clearTimeout(timer)
+      timer = window.setTimeout(apply, 150)
+    }
+
+    apply()
+    const observer = new ResizeObserver(maybeApply)
+    observer.observe(element)
+    window.addEventListener('orientationchange', maybeApply)
+
+    return () => {
+      window.clearTimeout(timer)
+      observer.disconnect()
+      window.removeEventListener('orientationchange', maybeApply)
+    }
+  }, [ref])
+}
+
+/**
+ * Europe 2026 is a sequence of parked map chapters connected by explicit
+ * command-driven animations.
+ *
+ * The camera timeline is still used as the source of truth for each chapter's
+ * framing, but it is sampled only while a command-driven leg is playing. There
+ * is no scroll track, scroll listener, or scroll scrubbing in this page.
+ */
 export default function Europe2026Page({ backTo }) {
   const reducedMotion = usePrefersReducedMotion()
-  const [forceStatic, setForceStatic] = useState(false)
+  // stops includes Seattle at index 0; destinations intentionally does not.
+  // Keeping this in stop coordinates prevents the old off-by-one state that
+  // opened on Reykjavík with leg 0 already complete.
+  const [currentStopIndex, setCurrentStopIndex] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
   const [journalIndex, setJournalIndex] = useState(null)
-  const [mobile, setMobile] = useState(
-    () => typeof window !== 'undefined' && window.innerWidth < 768
-  )
+  const [stageVersion, setStageVersion] = useState(0)
 
-  const isStatic = reducedMotion || forceStatic
-
-  const trackRef = useRef(null)
   const stageRef = useRef(null)
   const svgRef = useRef(null)
   const fineRef = useRef(null)
   const coarseRef = useRef(null)
+  const fineShadowRef = useRef(null)
+  const coarseShadowRef = useRef(null)
   const graticuleRef = useRef(null)
-  const rhumbRef = useRef(null)
+  const countryLabelRef = useRef(null)
   const routeRef = useRef(null)
   const legRefs = useRef([])
   const headRefs = useRef({ segs: [] })
-  const overlayRef = useRef(null)
+  const footageRef = useRef(null)
   const pinRefs = useRef([])
-  const markerRef = useRef(null)
-  const markerGlyphRef = useRef(null)
-  const chapterRef = useRef(null)
-  const counterRef = useRef(null)
-  const railRef = useRef(null)
-  const titleRef = useRef(null)
+  const overlayRef = useRef(null)
 
-  // Mutable frame state -- deliberately outside React.
   const sizeRef = useRef({ width: 1, height: 1 })
   const aspectRef = useRef(1.6)
   const timelineRef = useRef(null)
-  const lastChapterRef = useRef(-1)
-  const lastTierRef = useRef(null)
-  const lastLodRef = useRef(null)
-  const lastLegStateRef = useRef([])
+  const animationRef = useRef(null)
+  const renderChapterRef = useRef(null)
+  const autoStartRef = useRef(false)
   const lastStyleKRef = useRef(-1)
-  const settledRef = useRef(null)
 
-  // Fonts: injected here rather than @import'd globally, so the rest of the
-  // site doesn't pay a render-blocking round-trip for three display faces.
+  const currentStop = stops[currentStopIndex]
+  const selectedIndex = currentStop?.destIndex ?? -1
+
   useEffect(() => {
     if (document.getElementById('eu26-fonts')) return
     const link = document.createElement('link')
@@ -94,352 +152,430 @@ export default function Europe2026Page({ backTo }) {
     link.rel = 'stylesheet'
     link.href =
       'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600' +
-      '&family=IM+Fell+English+SC&family=Special+Elite&display=swap'
+      '&family=Barlow+Condensed:wght@500;600&family=IM+Fell+English+SC&family=Special+Elite&display=swap'
     document.head.appendChild(link)
   }, [])
 
-  useEffect(() => {
-    const onResize = () => setMobile(window.innerWidth < 768)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-
-  // The timeline is built from the measured stage, not during render --
-  // useStageSize fires once on mount before the scroll loop starts, and
-  // onFrame no-ops until it exists.
   useStageSize(
     stageRef,
     useCallback(({ width, height }) => {
       if (!width || !height) return
       sizeRef.current = { width, height }
       aspectRef.current = width / height
-      // Shot framing depends on aspect, so the timeline is rebuilt on resize
-      // rather than stored as viewBox strings (which don't survive reshape).
       timelineRef.current = buildTimeline(aspectRef.current)
-      // Per-leg stroke sizing and leg visibility are both derived from the
-      // container, so they have to be recomputed after a reshape.
-      lastChapterRef.current = -1
-      lastLegStateRef.current = []
       lastStyleKRef.current = -1
+      setStageVersion((version) => version + 1)
     }, [])
   )
 
-  const onFrame = useCallback(
-    (p, target, moving, movingChanged) => {
+  const cancelAnimation = useCallback(() => {
+    const animation = animationRef.current
+    if (animation) window.cancelAnimationFrame(animation.frame)
+    animationRef.current = null
+    setIsAnimating(false)
+  }, [])
+
+  const selectChapter = useCallback(
+    (index) => {
+      const next = Math.max(0, Math.min(destinations.length - 1, index))
+      cancelAnimation()
+      const stopIndex = destinations[next].index
+      const timeline = timelineRef.current
+      const parked = parkedFrameForStop(timeline, stopIndex)
+      if (parked) renderChapterRef.current?.(parked)
+      setCurrentStopIndex(stopIndex)
+    },
+    [cancelAnimation]
+  )
+
+  const startLeg = useCallback(
+    (legIndex) => {
+      if (animationRef.current || legIndex < 0 || legIndex >= legs.length) return
+
+      const timeline = timelineRef.current
+      const origin = parkedFrameForStop(timeline, legIndex)
+      if (!timeline || !origin) return
+
+      if (reducedMotion) {
+        const arrival = parkedFrameForStop(timeline, legIndex + 1)
+        if (arrival) renderChapterRef.current?.(arrival)
+        setCurrentStopIndex(legIndex + 1)
+        return
+      }
+
+      const animation = {
+        fromStop: legIndex,
+        toStop: legIndex + 1,
+        startedAt: performance.now(),
+        duration: durationForLeg(legs[legIndex]),
+        frame: 0,
+      }
+      animationRef.current = animation
+      setIsAnimating(true)
+      renderChapterRef.current?.(sampleLegTravel(timeline, legIndex, 0, origin))
+
+      const tick = (now) => {
+        if (animationRef.current !== animation) return
+
+        const local = Math.min(1, (now - animation.startedAt) / animation.duration)
+        const liveTimeline = timelineRef.current
+        const liveOrigin = parkedFrameForStop(liveTimeline, animation.fromStop)
+        const shot = sampleLegTravel(liveTimeline, animation.fromStop, local, liveOrigin)
+        if (shot) renderChapterRef.current?.(shot)
+
+        if (local >= 1) {
+          animationRef.current = null
+          setIsAnimating(false)
+          setCurrentStopIndex(animation.toStop)
+          return
+        }
+        animation.frame = window.requestAnimationFrame(tick)
+      }
+
+      animation.frame = window.requestAnimationFrame(tick)
+    },
+    [reducedMotion]
+  )
+
+  const stepChapter = useCallback(
+    (delta) => {
+      if (delta < 0) {
+        // Left is a navigation command, not a reverse cutscene. If it is
+        // pressed mid-leg, return immediately to that leg's departure. Once
+        // parked, each subsequent press jumps back one completed stop.
+        if (animationRef.current) {
+          const stopIndex = animationRef.current.fromStop
+          cancelAnimation()
+          const parked = parkedFrameForStop(timelineRef.current, stopIndex)
+          if (parked) renderChapterRef.current?.(parked)
+          setCurrentStopIndex(stopIndex)
+          return
+        }
+        if (currentStopIndex <= 0) return
+        cancelAnimation()
+        const stopIndex = currentStopIndex - 1
+        const parked = parkedFrameForStop(timelineRef.current, stopIndex)
+        if (parked) renderChapterRef.current?.(parked)
+        setCurrentStopIndex(stopIndex)
+        return
+      }
+
+      if (animationRef.current || isAnimating) return
+      if (currentStopIndex >= stops.length - 1) return
+      startLeg(currentStopIndex)
+    },
+    [cancelAnimation, currentStopIndex, isAnimating, startLeg]
+  )
+
+  const onChapterKeyDown = useCallback((event) => {
+    if (event.defaultPrevented || journalIndex !== null) return
+    const tag = event.target.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || event.target.isContentEditable) return
+
+    if (event.key === 'ArrowLeft') stepChapter(-1)
+    else if (event.key === 'ArrowRight') stepChapter(1)
+    else if (event.key === 'Home') selectChapter(0)
+    else if (event.key === 'End') selectChapter(destinations.length - 1)
+    else return
+    event.preventDefault()
+  }, [journalIndex, selectChapter, stepChapter])
+
+  // Listen on the window rather than relying on focus being inside the map.
+  // The stage itself is not focusable, so page-level arrow navigation must
+  // also work immediately after arrival without an extra click.
+  useEffect(() => {
+    window.addEventListener('keydown', onChapterKeyDown)
+    return () => window.removeEventListener('keydown', onChapterKeyDown)
+  }, [onChapterKeyDown])
+
+  const renderChapter = useCallback(
+    (shot) => {
       const svg = svgRef.current
-      const shots = timelineRef.current
-      if (!svg || !shots) return
+      if (!svg || !shot) return
 
-      const aspect = aspectRef.current
-      const shot = sampleTimeline(shots, p)
-      const { w, legIndex, legT, phase, stopIndex } = shot
-      const h = w / aspect
-
-      // The camera centre IS the vehicle, so it comes straight out of the
-      // sample along with the truncated leg -- one truncation drives the
-      // camera, the drawn line and the marker, and they cannot disagree.
-      const { active, cx, cy } = shot
-      const head = active.head
-
+      const { w, stopIndex, legIndex, legT, phase, active } = shot
+      const h = w / aspectRef.current
+      const routeLegIndex = legIndex
+      const routeActive = routeLegIndex >= 0 ? active : null
+      const { cx, cy } = shot
       const vx = cx - w / 2
       const vy = cy - h / 2
       svg.setAttribute('viewBox', `${vx} ${vy} ${w} ${h}`)
 
-      // User units per screen pixel. Everything stroke-related scales by this,
-      // instead of vector-effect="non-scaling-stroke", which interacts
-      // ambiguously with stroke-dasharray across engines.
       const k = w / sizeRef.current.width
-
-      if (fineRef.current) fineRef.current.setAttribute('stroke-width', 0.6 * k)
-      if (coarseRef.current) coarseRef.current.setAttribute('stroke-width', 0.7 * k)
+      if (fineRef.current) fineRef.current.setAttribute('stroke-width', 1.35 * k)
+      if (coarseRef.current) coarseRef.current.setAttribute('stroke-width', 1.45 * k)
+      if (fineShadowRef.current) {
+        fineShadowRef.current.setAttribute('stroke-width', 5.4 * k)
+        fineShadowRef.current.setAttribute('transform', `translate(${1.8 * k} ${2.6 * k})`)
+      }
+      if (coarseShadowRef.current) {
+        coarseShadowRef.current.setAttribute('stroke-width', 5.8 * k)
+        coarseShadowRef.current.setAttribute('transform', `translate(${1.8 * k} ${2.6 * k})`)
+      }
       if (graticuleRef.current) graticuleRef.current.setAttribute('stroke-width', 0.5 * k)
-      if (rhumbRef.current) rhumbRef.current.setAttribute('stroke-width', 0.45 * k)
-
-      // --- level of detail -------------------------------------------------
-      const lod = w > LOD_SWAP ? 'coarse' : 'fine'
-      if (lod !== lastLodRef.current) {
-        lastLodRef.current = lod
-        if (coarseRef.current) coarseRef.current.style.opacity = lod === 'coarse' ? '1' : '0'
-        if (fineRef.current) fineRef.current.style.display = lod === 'coarse' && mobile ? 'none' : ''
+      if (countryLabelRef.current) {
+        countryLabelRef.current.setAttribute('font-size', 11 * k)
+        countryLabelRef.current.setAttribute('stroke-width', 2.4 * k)
       }
+
+      // Crossfade the simplified world geometry into the detailed European
+      // geometry across a broad zoom band. Both coastlines and their displaced
+      // underprints share the same eased mix, so no border can pop in alone.
+      const lodRaw = Math.min(1, Math.max(0, (w - LOD_SWAP * 0.65) / (LOD_SWAP * 0.7)))
+      const coarseMix = lodRaw * lodRaw * (3 - 2 * lodRaw)
+      const fineMix = 1 - coarseMix
       if (coarseRef.current) {
-        // Crossfade rather than snap, so the dive doesn't blink.
-        const t = Math.min(1, Math.max(0, (w - LOD_SWAP * 0.7) / (LOD_SWAP * 0.6)))
-        coarseRef.current.style.opacity = String(t)
+        coarseRef.current.style.display = coarseMix <= 0 ? 'none' : ''
+        coarseRef.current.style.opacity = String(coarseMix)
+      }
+      if (fineRef.current) {
+        fineRef.current.style.display = fineMix <= 0 ? 'none' : ''
+        fineRef.current.style.opacity = String(fineMix)
+      }
+      if (coarseShadowRef.current) {
+        coarseShadowRef.current.style.display = coarseMix <= 0 ? 'none' : ''
+        coarseShadowRef.current.style.opacity = String(0.48 * coarseMix)
+      }
+      if (fineShadowRef.current) {
+        fineShadowRef.current.style.display = fineMix <= 0 ? 'none' : ''
+        fineShadowRef.current.style.opacity = String(0.48 * fineMix)
       }
 
-      if (rhumbRef.current) {
-        const [lo, hi] = RHUMB_FADE
-        const t = Math.min(1, Math.max(0, (w - lo) / (hi - lo)))
-        rhumbRef.current.style.opacity = String(t * 0.9)
+      const gridWeights = graticuleWeights(w)
+      const gridGroups = graticuleRef.current?.children ?? []
+      for (const group of gridGroups) {
+        const opacity = gridWeights[group.dataset.tier] ?? 0
+        group.style.display = opacity <= 0 ? 'none' : ''
+        group.style.opacity = String(opacity)
       }
 
-      const tier = graticuleTier(w)
-      if (tier !== lastTierRef.current) {
-        lastTierRef.current = tier
-        const groups = graticuleRef.current?.children ?? []
-        for (const g of groups) g.style.display = g.dataset.tier === tier ? '' : 'none'
-      }
-
-      // --- route styling ------------------------------------------------------
-      // A single red line for the whole journey, constant in SCREEN pixels so
-      // a leg drawn at one altitude looks identical to one drawn at another.
-      //
-      // Screen-constant sizing is safe because of the camera's
-      // one-motion-per-phase rule: k changes ONLY during a zoom phase, and
-      // during a zoom the camera is stationary with nothing being drawn. So
-      // restyling is rare -- only when the zoom actually moves -- rather than
-      // every frame.
       if (Math.abs(k - lastStyleKRef.current) > 1e-6) {
         lastStyleKRef.current = k
-        routeRef.current?.setAttribute('stroke-width', ROUTE.width * k)
+        const widths = {
+          underprint: ROUTE.underprintWidth,
+          body: ROUTE.width,
+          core: ROUTE.coreWidth,
+        }
+        routeRef.current?.querySelectorAll('path[data-route-layer]').forEach((element) => {
+          element.setAttribute('stroke-width', widths[element.dataset.routeLayer] * k)
+        })
       }
-
-      // --- route reveal -------------------------------------------------------
-      const legState = lastLegStateRef.current
 
       for (let i = 0; i < legs.length; i++) {
         const group = legRefs.current[i]
         if (!group) continue
+        const active = i === routeLegIndex
+        group.style.display = active ? '' : 'none'
+        if (!active) continue
 
-        const state = i < legIndex ? 'done' : i === legIndex ? 'active' : 'future'
-
-        if (state !== legState[i]) {
-          group.style.display = state === 'future' ? 'none' : ''
-          if (state === 'done') {
-            // Restore the complete geometry once, then never touch this leg
-            // again -- a finished leg is fully immutable from here on.
-            for (const el of headRefs.current.segs[i] ?? []) {
-              if (el) {
-                el.style.display = ''
-                el.setAttribute('d', el.dataset.full)
-              }
-            }
-          }
-          legState[i] = state
-        }
-
-        if (state === 'active') {
-          const segs = headRefs.current.segs[i] ?? []
-          for (let j = 0; j < segs.length; j++) {
-            const d = active.parts[j]
-            if (!segs[j]) continue
-            segs[j].style.display = d ? '' : 'none'
-            if (d) segs[j].setAttribute('d', d)
+        const segments = headRefs.current.segs[i] ?? []
+        for (let j = 0; j < segments.length; j++) {
+          const path = routeActive?.parts[j]
+          for (const layer of segments[j] ?? []) {
+            layer.style.display = path ? '' : 'none'
+            if (path) layer.setAttribute('d', path)
           }
         }
       }
 
-      // --- overlay ---------------------------------------------------------
+      // Only visually long plane/train segments receive a footage plate.
+      // Selection is deterministic, giving adjacent eligible chapters variety
+      // without loading or changing sources at interaction time.
+      const footage = footageRef.current
+      const { transport: transportSelection, destination: destinationSelection } = footagePlanForLeg(
+        legs[routeLegIndex],
+        stops[routeLegIndex + 1]
+      )
+      if (footage) {
+        const visible = phase === 'draw' && !reducedMotion
+        const hasSequence = Boolean(transportSelection && destinationSelection)
+        const mix = hasSequence ? sequencedFootageMix(legT) : null
+        const opacity = !visible
+          ? 0
+          : mix
+            ? mix.containerOpacity
+            : destinationSelection
+              ? destinationFootageOpacity(legT)
+              : transportSelection
+                ? footageOpacity(legT, transportSelection.treatment)
+                : 0
+        const weights = new Map()
+        if (visible && transportSelection) {
+          weights.set(transportSelection.clipId, mix?.transportWeight ?? 1)
+        }
+        if (visible && destinationSelection) {
+          weights.set(destinationSelection.clipId, mix?.destinationWeight ?? 1)
+        }
+        footage.dataset.mode = hasSequence
+          ? 'crossfade'
+          : destinationSelection?.mode ?? transportSelection?.mode ?? 'none'
+        footage.dataset.treatment = hasSequence
+          ? 'sequence'
+          : destinationSelection?.treatment ?? transportSelection?.treatment ?? 'none'
+
+        const activeVideos = []
+        for (const video of footage.querySelectorAll('video[data-travel-clip]')) {
+          const weight = weights.get(video.dataset.travelClip) ?? 0
+          if (weight <= 0) {
+            video.style.opacity = '0'
+            video.pause()
+            video.dataset.playbackActive = 'false'
+            continue
+          }
+          if (video.dataset.playbackActive !== 'true') video.currentTime = 0
+          video.dataset.playbackActive = 'true'
+          video.play().catch(() => {})
+          activeVideos.push({ video, weight, ready: video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA })
+        }
+
+        // Normalize the weights among ready plates. If the destination frame
+        // is late, the transport plate holds rather than exposing the map and
+        // causing a brightness dip in the middle of the crossfade.
+        const readyWeight = activeVideos.reduce((sum, item) => sum + (item.ready ? item.weight : 0), 0)
+        for (const item of activeVideos) {
+          item.video.style.opacity = item.ready && readyWeight > 0 ? String(item.weight / readyWeight) : '0'
+        }
+        footage.style.opacity = String(readyWeight > 0 ? opacity : 0)
+        footage.dataset.activeClip = [...weights.entries()]
+          .filter(([, weight]) => weight > 0)
+          .map(([clipId]) => clipId)
+          .join(',') || 'none'
+      }
+
       const { width: cw, height: ch } = sizeRef.current
       const toScreenX = (x) => ((x - vx) / w) * cw
       const toScreenY = (y) => ((y - vy) / h) * ch
-
       for (let i = 0; i < stops.length; i++) {
-        const el = pinRefs.current[i]
-        if (!el) continue
-        // A stop appears once its arrival leg has been drawn.
-        const arrived = i === 0 || i - 1 < legIndex || (i - 1 === legIndex && legT > 0.985)
-        if (!arrived) {
-          el.style.visibility = 'hidden'
+        const element = pinRefs.current[i]
+        if (!element) continue
+        const relevant = i === stopIndex
+        if (!relevant) {
+          element.style.visibility = 'hidden'
           continue
         }
         const sx = toScreenX(stops[i].x)
         const sy = toScreenY(stops[i].y)
         const off = sx < -120 || sy < -60 || sx > cw + 120 || sy > ch + 60
-        el.style.visibility = off ? 'hidden' : 'visible'
-        if (!off) el.style.transform = `translate3d(${sx}px, ${sy}px, 0)`
+        element.style.visibility = off ? 'hidden' : 'visible'
+        if (!off) element.style.transform = `translate3d(${sx}px, ${sy}px, 0)`
       }
 
-      // The vehicle is never hidden. During a dwell it sits parked on the stop
-      // it just reached; during a depart it waits at the origin already facing
-      // the way it's about to go. Because each leg's framing fits both its
-      // endpoints, holding the camera through the draw keeps it on screen for
-      // the whole leg.
-      const marker = markerRef.current
-      if (marker && head) {
-        const sx = toScreenX(head.x)
-        const sy = toScreenY(head.y)
-        // Uniform world->screen scale means the world angle IS the screen
-        // angle -- no conversion needed.
-        const flip = glyphFlip(head.mode, head.angle)
-        marker.style.visibility = 'visible'
-        marker.style.transform = `translate3d(${sx}px, ${sy}px, 0) rotate(${head.angle}deg) scaleY(${flip})`
-        setMarkerGlyph(markerGlyphRef.current, head.mode)
+      if (overlayRef.current) {
+        overlayRef.current.style.pointerEvents = 'auto'
+        overlayRef.current.dataset.settled = 'true'
       }
 
-      // Title card clears out over the opening beat.
-      const title = titleRef.current
-      if (title) {
-        const fade = Math.min(1, Math.max(0, (p - 0.005) / 0.05))
-        title.style.opacity = String(1 - fade)
-        title.style.transform = `translate3d(0, ${-28 * fade}px, 0)`
-        title.style.visibility = fade >= 1 ? 'hidden' : 'visible'
-      }
-
-      // --- interaction gate -------------------------------------------------
-      if (movingChanged && overlayRef.current && settledRef.current !== !moving) {
-        settledRef.current = !moving
-        overlayRef.current.style.pointerEvents = moving ? 'none' : 'auto'
-        overlayRef.current.dataset.settled = String(!moving)
-      }
-
-      // --- chapter (the only React-adjacent work) ---------------------------
-      // Driven by the phase, not by a legT threshold: during a draw the label
-      // names where you're heading, and it flips exactly on arrival.
-      const current =
-        phase === 'draw' ? Math.min(stops.length - 1, legIndex + 1) : Math.max(0, stopIndex)
-      if (current !== lastChapterRef.current) {
-        lastChapterRef.current = current
-        const stop = stops[Math.min(current, stops.length - 1)]
-        if (chapterRef.current) chapterRef.current.textContent = stop.name
-        if (counterRef.current) {
-          // The origin is named but not numbered -- it isn't one of the places
-          // the trip counts as having visited.
-          counterRef.current.textContent = stop.origin
-            ? `departure · ${stop.country}`
-            : `${String(stop.destIndex + 1).padStart(2, '0')} / ${destinations.length} · ${stop.country}`
-        }
-        const reached = stop.origin ? -1 : stop.destIndex
-        const ticks = railRef.current?.querySelectorAll('[data-rail-bar]') ?? []
-        ticks.forEach((bar, i) => {
-          const on = i <= reached
-          bar.style.width = on ? '26px' : '14px'
-          bar.style.backgroundColor = on ? PAPER.pin : `${PAPER.landEdge}66`
-        })
-      }
     },
-    [mobile]
+    [reducedMotion]
   )
 
-  useScrollDirector(trackRef, onFrame, !isStatic)
+  useEffect(() => {
+    renderChapterRef.current = renderChapter
+  }, [renderChapter])
 
-  const jumpToStop = useCallback((i) => {
-    const track = trackRef.current
-    const shots = timelineRef.current
-    if (!track || !shots) return
-    const p = progressForStop(shots, i)
-    const total = Math.max(1, track.offsetHeight - window.innerHeight)
-    window.scrollTo({ top: track.offsetTop + p * total, behavior: 'smooth' })
+  useEffect(() => {
+    const timeline = timelineRef.current
+    if (!timeline || !currentStop) return
+    if (animationRef.current) {
+      const animation = animationRef.current
+      const elapsed = performance.now() - animation.startedAt
+      const local = Math.min(1, elapsed / animation.duration)
+      const origin = parkedFrameForStop(timeline, animation.fromStop)
+      renderChapter(sampleLegTravel(timeline, animation.fromStop, local, origin))
+      return
+    }
+    renderChapter(parkedFrameForStop(timeline, currentStop.index))
+
+  }, [currentStop, renderChapter, stageVersion])
+
+  // The opening Seattle -> Reykjavík chapter begins as soon as the stage has
+  // a measured camera. Later chapters always wait for explicit user input.
+  useEffect(() => {
+    if (stageVersion === 0 || currentStopIndex !== 0 || autoStartRef.current) return undefined
+    const frame = window.requestAnimationFrame(() => {
+      if (autoStartRef.current) return
+      autoStartRef.current = true
+      startLeg(0)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [currentStopIndex, stageVersion, startLeg])
+
+  useEffect(() => () => cancelAnimation(), [cancelAnimation])
+
+  const onPinSelect = useCallback((stopIndex) => {
+    if (animationRef.current) return
+    const destinationIndex = stops[stopIndex]?.destIndex
+    if (destinationIndex === undefined) return
+    setCurrentStopIndex(stopIndex)
+    setJournalIndex(stopIndex)
   }, [])
 
-  // Steps through destinations, so the origin is never landed on.
   const stepJournal = useCallback((delta) => {
-    setJournalIndex((cur) => {
-      if (cur === null) return cur
-      const at = stops[cur]?.destIndex
-      if (at === undefined) return cur
-      const next = Math.min(destinations.length - 1, Math.max(0, at + delta))
-      return destinations[next].index
+    setJournalIndex((current) => {
+      if (current === null) return current
+      const destinationIndex = stops[current]?.destIndex
+      if (destinationIndex === undefined) return current
+      const next = Math.min(destinations.length - 1, Math.max(0, destinationIndex + delta))
+      const nextStop = destinations[next]
+      setCurrentStopIndex(nextStop.index)
+      return nextStop.index
     })
   }, [])
 
-  const hud = (
-    <ChapterHud
-      backTo={backTo}
-      onJump={jumpToStop}
-      onOpen={setJournalIndex}
-      onToggleStatic={() => setForceStatic((v) => !v)}
-      isStatic={isStatic}
-      chapterRef={chapterRef}
-      counterRef={counterRef}
-      railRef={railRef}
-    />
-  )
-
-  if (isStatic) {
-    return (
-      <div className="relative" style={{ backgroundColor: PAPER.base }}>
-        <StaticRouteMap onSelect={setJournalIndex} />
-        <div className="pointer-events-none fixed inset-0 z-30">{hud}</div>
-        <JournalModal
-          stopIndex={journalIndex}
-          onClose={() => setJournalIndex(null)}
-          onStep={stepJournal}
-        />
-      </div>
-    )
-  }
-
   return (
-    <div className="relative" style={{ backgroundColor: PAPER.base }}>
+    <div
+      className="relative h-screen overflow-hidden"
+      style={{ backgroundColor: PAPER.base }}
+    >
       <div
-        ref={trackRef}
-        className="relative"
-        style={{ height: `${mobile ? TRACK_VH_MOBILE : TRACK_VH_DESKTOP}vh` }}
+        ref={stageRef}
+        className="relative h-full w-full eu-stage"
       >
-        <div className="sticky top-0 h-screen w-full overflow-hidden eu-stage">
-          <div ref={stageRef} className="relative h-full w-full">
-            <div className="absolute inset-0" style={{ backgroundColor: PAPER.sea }} />
+        <div className="absolute inset-0" style={{ backgroundColor: PAPER.sea }} />
 
-            <MapStage
-              ref={svgRef}
-              fineRef={fineRef}
-              coarseRef={coarseRef}
-              graticuleRef={graticuleRef}
-              rhumbRef={rhumbRef}
-              routeRef={routeRef}
-              headRefs={headRefs}
-              legRefs={legRefs}
-              mobile={mobile}
-            />
+        <MapStage
+          ref={svgRef}
+          fineRef={fineRef}
+          coarseRef={coarseRef}
+          fineShadowRef={fineShadowRef}
+          coarseShadowRef={coarseShadowRef}
+          graticuleRef={graticuleRef}
+          countryLabelRef={countryLabelRef}
+          routeRef={routeRef}
+          headRefs={headRefs}
+          legRefs={legRefs}
+        />
 
-            {/* Static texture layers. Above the map so the map takes the grain,
-                but never repainted -- the turbulence is baked into a tile. */}
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{ backgroundImage: MOTTLE_URL, opacity: mobile ? 0.35 : 0.5 }}
-            />
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                backgroundImage: GRAIN_URL,
-                opacity: mobile ? 0.16 : 0.26,
-                // Blend modes force an extra compositing pass; skip on mobile.
-                mixBlendMode: mobile ? 'normal' : 'multiply',
-              }}
-            />
-            <div className="pointer-events-none absolute inset-0" style={{ background: VIGNETTE }} />
+        <TravelFootageOverlay ref={footageRef} />
 
-            <PinLayer
-              ref={overlayRef}
-              pinRefs={pinRefs}
-              markerRef={markerRef}
-              markerGlyphRef={markerGlyphRef}
-              onSelect={setJournalIndex}
-            />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ backgroundImage: MOTTLE_URL, opacity: 0.72, mixBlendMode: 'multiply' }}
+        />
+        <div
+          className="eu-paper-patina pointer-events-none absolute inset-0"
+          style={{ backgroundImage: PATINA }}
+        />
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ backgroundImage: GRAIN_URL, opacity: 0.46, mixBlendMode: 'multiply' }}
+        />
+        <div className="pointer-events-none absolute inset-0" style={{ background: VIGNETTE }} />
 
-            {hud}
+        <PinLayer ref={overlayRef} pinRefs={pinRefs} onSelect={onPinSelect} />
 
-            {/* Title card, fades out as the journey begins. */}
-            <div
-              ref={titleRef}
-              className="pointer-events-none absolute inset-x-0 top-[22%] flex flex-col items-center px-6 text-center eu-titlecard"
-            >
-              {/* The halo keeps coastlines from running through the lettering. */}
-              <div className="eu-titlehalo relative flex flex-col items-center">
-                <h1
-                  className="text-4xl leading-none tracking-[0.06em] sm:text-6xl"
-                  style={{ color: PAPER.inkDeep, fontFamily: 'Cinzel, serif' }}
-                >
-                  {meta.title}
-                </h1>
-                <p
-                  className="mt-3 text-[11px] uppercase tracking-[0.34em] [text-wrap:balance] sm:text-xs"
-                  style={{ color: PAPER.inkBody, fontFamily: '"IM Fell English SC", serif' }}
-                >
-                  {meta.subtitle}
-                </p>
-                <p
-                  className="mt-8 font-mono text-[10px] tracking-widest opacity-70"
-                  style={{ color: PAPER.inkBody }}
-                >
-                  scroll to begin
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ChapterHud backTo={backTo} />
+
+        <JourneyNav
+          selectedIndex={selectedIndex}
+          canPrevious={currentStopIndex > 0}
+          canNext={currentStopIndex < stops.length - 1}
+          isAnimating={isAnimating}
+          onSelect={selectChapter}
+          onPrevious={() => stepChapter(-1)}
+          onNext={() => stepChapter(1)}
+        />
       </div>
 
       <JournalModal

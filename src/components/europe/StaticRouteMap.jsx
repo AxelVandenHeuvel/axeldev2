@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 
-import { landFine } from '../../data/europeMap.js'
-import { destinations, legs, routeBounds, segmentPath, stops, transfers } from '../../lib/europeRoute.js'
+import { landCoarse, landFine } from '../../data/europeMap.js'
+import { destinations, legs, routeBounds, segmentPath, stops } from '../../lib/europeRoute.js'
 import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE, VIGNETTE } from './paper.js'
 
 /**
@@ -15,13 +15,10 @@ import { GRAIN_URL, MOTTLE_URL, PAPER, ROUTE, VIGNETTE } from './paper.js'
 
 export function StaticRouteMap({ onSelect }) {
   const view = useMemo(() => {
-    // Crop the Atlantic leg out -- fitting Seattle would shrink Europe to
-    // nothing. The journey list still covers it.
-    const b = routeBounds(300)
-    const minX = -5200
+    const b = routeBounds(800)
     return {
-      viewBox: `${minX} ${b.minY} ${b.maxX - minX} ${b.maxY - b.minY}`,
-      width: b.maxX - minX,
+      viewBox: `${b.minX} ${b.minY} ${b.maxX - b.minX} ${b.maxY - b.minY}`,
+      width: b.maxX - b.minX,
     }
   }, [])
 
@@ -42,17 +39,11 @@ export function StaticRouteMap({ onSelect }) {
         >
           <svg viewBox={view.viewBox} className="block h-auto w-full" role="img" aria-label="Route map of the 2026 Europe trip">
             <g fill={PAPER.land} stroke={PAPER.landEdge} strokeWidth={0.6 * k} strokeLinejoin="round">
-              {landFine.map((d, i) => (
-                <path key={i} d={d} />
+              {landCoarse.map((d, i) => (
+                <path key={`coarse-${i}`} d={d} />
               ))}
-            </g>
-
-            <g stroke={PAPER.landEdge} strokeOpacity="0.5" strokeWidth={0.6 * k} fill="none">
-              {transfers.map((t) => (
-                <g key={t.slug}>
-                  <line x1={t.x - 14} y1={t.y} x2={t.x + 14} y2={t.y} />
-                  <line x1={t.x} y1={t.y - 14} x2={t.x} y2={t.y + 14} />
-                </g>
+              {landFine.map((d, i) => (
+                <path key={`fine-${i}`} d={d} />
               ))}
             </g>
 
