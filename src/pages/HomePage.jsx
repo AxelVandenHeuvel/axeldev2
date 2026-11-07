@@ -4,6 +4,7 @@ import { AsciiBlackHole } from '../components/AsciiBlackHole'
 import { Link } from '../components/Link'
 import { navigate } from '../lib/router'
 import { panels } from '../lib/routes'
+import { preloadCategoriesPage } from '../lib/pageLoaders'
 
 const RESUME_URL = '/resume/Axel_VandenHeuvel_SWE.pdf'
 
@@ -82,6 +83,22 @@ export function HomePage({ panel }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [panel])
+
+  useEffect(() => {
+    const preload = () => preloadCategoriesPage().catch(() => {})
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(preload, { timeout: 1200 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const id = window.setTimeout(preload, 400)
+    return () => window.clearTimeout(id)
+  }, [])
+
+  const enterPosts = () => {
+    preloadCategoriesPage()
+      .then(() => navigate('/posts'))
+      .catch(() => navigate('/posts'))
+  }
 
   return (
     <main
@@ -168,7 +185,7 @@ export function HomePage({ panel }) {
       <h1 className="sr-only">Axel VandenHeuvel</h1>
       <NameArt lines={FIRST_NAME} />
 
-      <AsciiBlackHole onEnter={() => navigate('/posts')} />
+      <AsciiBlackHole onEnter={enterPosts} onIntent={preloadCategoriesPage} />
 
       <NameArt lines={LAST_NAME} />
     </main>

@@ -6,11 +6,10 @@ import { PostPage } from './pages/PostPage'
 import { PostsPage } from './pages/PostsPage'
 import { usePath } from './lib/router'
 import { resolveRoute } from './lib/routes'
+import { loadCategoriesPage } from './lib/pageLoaders'
 
 // Lazy so three.js (the ColorBends shader) stays out of the homepage bundle.
-const CategoriesPage = lazy(() =>
-  import('./pages/CategoriesPage').then((m) => ({ default: m.CategoriesPage }))
-)
+const CategoriesPage = lazy(loadCategoriesPage)
 
 // Posts can opt into a bespoke page via a `view` field. Lazy so the map data
 // and cutscene machinery stay out of the homepage bundle.
@@ -23,6 +22,15 @@ const customViews = {
 
 const CREAM = '#f2ebe0'
 const NIGHT = '#050914'
+
+function CategoriesFallback() {
+  return (
+    <div className="min-h-dvh bg-[#050914] px-6 py-8 font-mono text-slate-400">
+      <a href="/" className="text-sm hover:text-white transition-colors">← escape</a>
+      <div className="min-h-[70vh] flex items-center justify-center text-sm">entering posts...</div>
+    </div>
+  )
+}
 
 /** Matched on <html> so overscroll and lazy-load gaps never flash the wrong color. */
 function backgroundFor(route) {
@@ -51,7 +59,7 @@ function App() {
 
     case 'categories':
       return (
-        <Suspense fallback={null}>
+        <Suspense fallback={<CategoriesFallback />}>
           <CategoriesPage />
         </Suspense>
       )

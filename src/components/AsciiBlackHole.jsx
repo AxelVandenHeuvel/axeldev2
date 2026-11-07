@@ -6,7 +6,7 @@ const FRAME_MS = 100
 /** Cursor distance (px) from the center within which the hole reacts. */
 const REACH = 250
 
-export function AsciiBlackHole({ onEnter }) {
+export function AsciiBlackHole({ onEnter, onIntent }) {
   const [frameIndex, setFrameIndex] = useState(0)
   const [glow, setGlow] = useState(0)
   const containerRef = useRef(null)
@@ -28,6 +28,9 @@ export function AsciiBlackHole({ onEnter }) {
       ref={containerRef}
       className="flex-1 flex items-center justify-center overflow-hidden min-h-0 pt-4 relative outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--home-ink)] rounded-sm"
       onMouseMove={(e) => setGlow(Math.max(0, 1 - distanceFromCenter(e) / REACH))}
+      onMouseEnter={onIntent}
+      onFocus={onIntent}
+      onTouchStart={onIntent}
       onMouseLeave={() => setGlow(0)}
       onClick={(e) => distanceFromCenter(e) <= REACH && onEnter()}
       onKeyDown={(e) => {
